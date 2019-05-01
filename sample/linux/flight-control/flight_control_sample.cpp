@@ -469,7 +469,7 @@ moveByPositionOffset(Vehicle *vehicle, float xOffsetDesired,
   sleep(1);
 
   // Get data
-
+  getCurrPos(&tempPos);
 
   // Global position retrieved via subscription
   Telemetry::TypeMap<TOPIC_GPS_FUSED>::type currentSubscriptionGPS;
@@ -505,6 +505,10 @@ moveByPositionOffset(Vehicle *vehicle, float xOffsetDesired,
   double xOffsetRemaining = xOffsetDesired - localOffset.x;
   double yOffsetRemaining = yOffsetDesired - localOffset.y;
   double zOffsetRemaining = zOffsetDesired - (-localOffset.z);
+
+  double xOffsetRem = xOffsetDesired - tempPos.x;
+  double yOffsetRem = yOffsetDesired - tempPos.y;
+  double zOffsetRem = zOffsetDesired - (-tempPos.z);
 
   // Conversions
   double yawDesiredRad     = DEG2RAD * yawDesired;
@@ -572,7 +576,8 @@ moveByPositionOffset(Vehicle *vehicle, float xOffsetDesired,
   }
   else
   {
-    zCmd = currentBroadcastGP.height + zOffsetDesired;
+    //zCmd = currentBroadcastGP.height + zOffsetDesired;
+    zCmd = (-temPos.z) + zOffsetDesired;
   }
 
   //! Main closed-loop receding setpoint position control
@@ -605,12 +610,17 @@ moveByPositionOffset(Vehicle *vehicle, float xOffsetDesired,
       localOffsetFromGpsOffset(vehicle, localOffset,
                                static_cast<void*>(&currentBroadcastGP),
                                static_cast<void*>(&originBroadcastGP));
+      getCurrPos(&tempPos);
     }
 
     //! See how much farther we have to go
     xOffsetRemaining = xOffsetDesired - localOffset.x;
     yOffsetRemaining = yOffsetDesired - localOffset.y;
     zOffsetRemaining = zOffsetDesired - (-localOffset.z);
+
+    xOffsetRem = xOffsetDesired - tempPos.x;
+    yOffsetRem = yOffsetDesired - tempPos.y;
+    zOffsetRem = zOffsetDesired - (-tempPos.z);
 
     //! See if we need to modify the setpoint
     if (std::abs(xOffsetRemaining) < speedFactor)
@@ -631,7 +641,8 @@ moveByPositionOffset(Vehicle *vehicle, float xOffsetDesired,
     }
     else if (std::abs(xOffsetRemaining) < posThresholdInM &&
              std::abs(yOffsetRemaining) < posThresholdInM &&
-             std::abs(zOffsetRemaining) < zDeadband &&
+						 std::abs(zOffsetRem) < zDeadband &&
+						 //std::abs(zOffsetRemaining) < zDeadband &&
              std::abs(yawInRad - yawDesiredRad) < yawThresholdInRad)
     {
       //! 1. We are within bounds; start incrementing our in-bound counter
