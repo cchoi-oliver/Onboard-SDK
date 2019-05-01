@@ -40,16 +40,16 @@ using namespace DJI::OSDK::Telemetry;
 
 FILE *pf = fopen("position_out.csv", "w");
 
-float whNorth = 75;  // warehouse north in degrees
-float whEast = whNorth + 90; // warehouse east (degrees)
-float whSouth = whNorth - 180; // warehouse south (degrees)
-float whWest = whEast - 180; // warehouse west (degrees)
+double whNorth = 75;  // warehouse north in degrees
+double whEast = whNorth + 90; // warehouse east (degrees)
+double whSouth = whNorth - 180; // warehouse south (degrees)
+double whWest = whEast - 180; // warehouse west (degrees)
 
 // North = [0, 1], East = [1, 0], South = [0, -1], West = [-1, 0]
-float whNorthVector[2] = {sin(whNorth * DEG2RAD), cos(whNorth * DEG2RAD)}; // unit meter vector, warehouse north
-float whEastVector[2] = {cos(whNorth * DEG2RAD), -1 * sin(whNorth * DEG2RAD)};
-float whSouthVector[2] = {-1 * whNorthVector[0], -1 * whNorthVector[1]};
-float whWestVector[2] = {-1 * whEastVector[0], -1 * whEastVector[1]};
+double whNorthVector[2] = {sin(whNorth * DEG2RAD), cos(whNorth * DEG2RAD)}; // unit meter vector, warehouse north
+double whEastVector[2] = {cos(whNorth * DEG2RAD), -1 * sin(whNorth * DEG2RAD)};
+double whSouthVector[2] = {-1 * whNorthVector[0], -1 * whNorthVector[1]};
+double whWestVector[2] = {-1 * whEastVector[0], -1 * whEastVector[1]};
 
 // Define the serial port we're connecting to
 e_vbus_index sensor_id = e_vbus1;
