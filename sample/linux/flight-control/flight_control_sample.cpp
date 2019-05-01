@@ -35,6 +35,133 @@
 using namespace DJI::OSDK;
 using namespace DJI::OSDK::Telemetry;
 
+FILE *pf = fopen("position_out.csv", "w");
+
+double whNorth = 75;  // warehouse north in degrees
+double whEast = whNorth + 90; // warehouse east (degrees)
+double whSouth = whNorth - 180; // warehouse south (degrees)
+double whWest = whEast - 180; // warehouse west (degrees)
+
+// North = [0, 1], East = [1, 0], South = [0, -1], West = [-1, 0]
+double whNorthVector[2] = {sin(whNorth * DEG2RAD), cos(whNorth * DEG2RAD)}; // unit meter vector, warehouse north
+double whEastVector[2] = {cos(whNorth * DEG2RAD), -1 * sin(whNorth * DEG2RAD)};
+double whSouthVector[2] = {-1 * whNorthVector[0], -1 * whNorthVector[1]};
+double whWestVector[2] = {-1 * whEastVector[0], -1 * whEastVector[1]};
+
+// Define the serial port we're connecting to
+e_vbus_index sensor_id = e_vbus1;
+
+typedef struct Pos {
+	float x;
+	float y;
+	float z;
+} _Pos;
+
+typedef struct Vel {
+	float x;
+	float y;
+	float z;
+} _Vel;
+
+volatile Pos currPos;
+volatile Vel currVel;
+
+void getCurrPos(Pos* destPos) {
+	destPos->x = currPos.x;
+	destPos->y = currPos.y;
+	destPos->z = currPos.z;
+}
+
+typedef struct droneCoords {
+	float x;
+	float y;
+	float z;
+	float yaw;
+};
+
+droneCoords currDroneCoords;
+
+bool moveNorth(Vehicle *vehicle, float offsetDesired)
+{
+  float x = whNorthVector[1] * offsetDesired;
+  float y = whNorthVector[0] * offsetDesired;
+  moveByPositionOffset(vehicle, x, y, 0, currDroneCoords.yaw);
+}
+
+bool moveSouth(Vehicle *vehicle, float offsetDesired)
+{
+  float x = whSouthVector[1] * offsetDesired;
+  float y = whSouthVector[0] * offsetDesired;
+  moveByPositionOffset(vehicle, x, y, 0, currDroneCoords.yaw);
+}
+
+bool moveEast(Vehicle *vehicle, float offsetDesired)
+{
+  float x = whEastVector[1] * offsetDesired;
+  float y = whEastVector[0] * offsetDesired;
+  moveByPositionOffset(vehicle, x, y, 0, currDroneCoords.yaw);
+}
+
+bool moveWest(Vehicle *vehicle, float offsetDesired)
+{
+  float x = whWestVector[1] * offsetDesired;
+  float y = whWestVector[0] * offsetDesired;
+  moveByPositionOffset(vehicle, x, y, 0, currDroneCoords.yaw);
+}
+
+bool turnNorth(Vehicle *vehicle)
+{
+	currDroneCoords.yaw = whNorth;
+	moveByPositionOffset(vehicle, 0, 0, 0, currDroneCoords.yaw);
+}
+
+bool turnSouth(Vehicle *vehicle)
+{
+	currDroneCoords.yaw = whSouth;
+	moveByPositionOffset(vehicle, 0, 0, 0, currDroneCoords.yaw);
+}
+
+bool turnEast(Vehicle *vehicle)
+{
+	currDroneCoords.yaw = whEast;
+	moveByPositionOffset(vehicle, 0, 0, 0, currDroneCoords.yaw);
+}
+
+bool turnWest(Vehicle *vehicle)
+{
+	currDroneCoords.yaw = whWest;
+	moveByPositionOffset(vehicle, 0, 0, 0, currDroneCoords.yaw);
+}
+
+/**Callback optimized for velocity, ultrasonic, and motion data. */
+int _callback(int data_type, int data_len, char* content) {
+	//get position data if motion data collected
+	if (e_motion == data_type && NULL != content) {
+		motion *m = (motion*) content; // convert content to motion data
+		Pos p;
+		Vel v;
+		p.x = m->position_in_global_x;
+		p.y = m->position_in_global_y;
+		p.z = m->position_in_global_z;
+
+		v.x = m->velocity_in_global_x;
+		v.y = m->velocity_in_global_y;
+		v.z = m->velocity_in_global_z;
+
+		currPos.x = p.x;
+		currPos.y = p.y;
+		currPos.z = p.z;
+
+		currVel.x = v.x;
+		currVel.y = v.y;
+		currVel.z = v.z;
+
+		fprintf(pf, "%f, %f, %f\n", p.x, p.y, p.z);
+		//std::cout << p.x << " " << p.y << " " << std::endl;
+	}
+	return 0;
+}
+
 /*! Monitored Takeoff (Blocking API call). Return status as well as ack.
     This version of takeoff makes sure your aircraft actually took off
     and only returns when takeoff is complete.
@@ -307,6 +434,8 @@ moveByPositionOffset(Vehicle *vehicle, float xOffsetDesired,
   int withinControlBoundsTimeReqmt = 50 * cycleTimeInMs; // 50 cycles
   int pkgIndex;
 
+  Pos tempPos; // Position struct to hold current value of currPos (global)
+
   //@todo: remove this once the getErrorCode function signature changes
   char func[50];
 
@@ -359,6 +488,7 @@ moveByPositionOffset(Vehicle *vehicle, float xOffsetDesired,
   sleep(1);
 
   // Get data
+
 
   // Global position retrieved via subscription
   Telemetry::TypeMap<TOPIC_GPS_FUSED>::type currentSubscriptionGPS;

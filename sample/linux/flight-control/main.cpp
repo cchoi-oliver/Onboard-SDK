@@ -1,4 +1,4 @@
-/*! @file flight-control/main.cpp
+	/*! @file flight-control/main.cpp
  *  @version 3.3
  *  @date Jun 05 2017
  *
@@ -38,6 +38,7 @@
 using namespace DJI::OSDK;
 using namespace DJI::OSDK::Telemetry;
 
+/**
 FILE *pf = fopen("position_out.csv", "w");
 
 double whNorth = 75;  // warehouse north in degrees
@@ -158,12 +159,13 @@ int _callback(int data_type, int data_len, char* content) {
 		currVel.x = v.x;
 		currVel.y = v.y;
 		currVel.z = v.z;
-		
+
 		fprintf(pf, "%f - %f - %f\n", p.x, p.y, p.z);
 		//std::cout << p.x << " " << p.y << " " << std::endl;
 	}
 	return 0;
 }
+*/
 
 /*! main
  *
@@ -171,7 +173,7 @@ int _callback(int data_type, int data_len, char* content) {
 int
 main(int argc, char** argv)
 {
-  
+
   currDroneCoords.x = 0;
   currDroneCoords.y = 0;
   currDroneCoords.z = 0;
