@@ -51,18 +51,6 @@ double whWestVector[2] = {-1 * whEastVector[0], -1 * whEastVector[1]};
 // Define the serial port we're connecting to
 e_vbus_index sensor_id = e_vbus1;
 
-typedef struct Pos {
-	float x;
-	float y;
-	float z;
-} _Pos;
-
-typedef struct Vel {
-	float x;
-	float y;
-	float z;
-} _Vel;
-
 volatile Pos currPos;
 volatile Vel currVel;
 
@@ -71,13 +59,6 @@ void getCurrPos(Pos* destPos) {
 	destPos->y = currPos.y;
 	destPos->z = currPos.z;
 }
-
-typedef struct droneCoords {
-	float x;
-	float y;
-	float z;
-	float yaw;
-};
 
 droneCoords currDroneCoords;
 

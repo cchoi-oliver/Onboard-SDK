@@ -49,6 +49,54 @@
 #define C_EARTH (double)6378137.0
 #define DEG2RAD 0.01745329252
 
+// Global variables
+extern FILE *pf;
+extern double whNorth;
+extern double whEast;
+extern double whSouth;
+extern double whWest;
+extern double whNorthVector[2];
+extern double whEastVector[2];
+extern double whSouthVector[2];
+extern double whWestVector[2];
+
+extern e_vbus_index sensor_id;
+
+typedef struct Pos {
+	float x;
+	float y;
+	float z;
+} _Pos;
+typedef struct Vel {
+	float x;
+	float y;
+	float z;
+} _Vel;
+extern volatile Pos currPos;
+extern volatile Vel currVel;
+
+void getCurrPos(Pos* destPos);
+
+struct droneCoords {
+	float x;
+	float y;
+	float z;
+	float yaw;
+};
+extern droneCoords currDroneCoords;
+
+bool moveNorth(Vehicle *vehicle, float offsetDesired);
+bool moveSouth(Vehicle *vehicle, float offsetDesired);
+bool moveEast(Vehicle *vehicle, float offsetDesired);
+bool moveWest(Vehicle *vehicle, float offsetDesired);
+bool turnNorth(Vehicle *vehicle);
+bool turnSouth(Vehicle *vehicle);
+bool turnEast(Vehicle *vehicle);
+bool turnWest(Vehicle *vehicle);
+
+int _callback(int data_type, int data_len, char* content);
+
+
 //!@note: All the default timeout parameters are for acknowledgement packets
 //! from the aircraft.
 

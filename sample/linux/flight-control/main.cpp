@@ -138,6 +138,7 @@ bool turnWest(Vehicle *vehicle)
 }
 
 /**Callback optimized for velocity, ultrasonic, and motion data. */
+/**
 int _callback(int data_type, int data_len, char* content) {
 	//get position data if motion data collected
 	if (e_motion == data_type && NULL != content) {
