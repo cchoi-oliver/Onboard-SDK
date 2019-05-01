@@ -577,7 +577,7 @@ moveByPositionOffset(Vehicle *vehicle, float xOffsetDesired,
   else
   {
     //zCmd = currentBroadcastGP.height + zOffsetDesired;
-    zCmd = (-temPos.z) + zOffsetDesired;
+    zCmd = (-tempPos.z) + zOffsetDesired;
   }
 
   //! Main closed-loop receding setpoint position control

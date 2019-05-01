@@ -31,9 +31,16 @@
  */
 
 #include "flight_control_sample.hpp"
-
 #include <cmath>
 #include <iostream>
+#include <stdint.h>
+#include <pthread.h>
+#include <stdlib.h>
+#include <time.h>
+
+//#include <tm_reader.h>
+#include <tm_config.h>
+#include <tmr_read_plan.h>
 
 using namespace DJI::OSDK;
 using namespace DJI::OSDK::Telemetry;
@@ -235,6 +242,9 @@ main(int argc, char** argv)
   std::cout
     << "| [e] Warehouse traversal                                        |"
     << std::endl;
+  std::cout
+    << "| [f] Z axis movement (ascend, descend)                          |"
+    << std::endl;
   char inputChar;
   std::cin >> inputChar;
 
@@ -305,6 +315,12 @@ main(int argc, char** argv)
       moveNorth(vehicle, 5 + 3.1);
       moveWest(vehicle, 2.1);
       // Reached start location
+      monitoredLanding(vehicle);
+      break;
+    case 'f':
+      monitoredTakeoff(vehicle);
+      moveByPositionOffset(vehicle, 0, 0, 3, whSouth);
+      moveByPositionOffset(vehicle, 0, 0, -1, whNorth);
       monitoredLanding(vehicle);
     default:
       break;
