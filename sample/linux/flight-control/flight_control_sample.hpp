@@ -40,6 +40,9 @@
 #include "dji_status.hpp"
 #include <dji_vehicle.hpp>
 
+//GSDK includes
+#include "DJI_guidance.h"
+
 // Helpers
 #include <dji_linux_helpers.hpp>
 
