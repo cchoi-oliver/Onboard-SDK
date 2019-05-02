@@ -37,144 +37,48 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <time.h>
+#include <vector>
 
 extern "C" {
 #include <tm_reader.h>
 #include <tm_config.h>
-//#include <tmr_read_plan.h>
+#include <tmr_read_plan.h>
 }
+
+using std::vector;
 using namespace DJI::OSDK;
 using namespace DJI::OSDK::Telemetry;
 
-/**
-FILE *pf = fopen("position_out.csv", "w");
+void read_rfid(TMR_Reader * rp, uint32_t timeout, vector<char*>& buffer) {
+	TMR_TagReadData ** tags;
+	TMR_ReadPlan plan;
+	
+	int32_t c = 500 * sizeof(TMR_TagReadData);
+	int32_t *tagCount = &c;
 
-double whNorth = 75;  // warehouse north in degrees
-double whEast = whNorth + 90; // warehouse east (degrees)
-double whSouth = whNorth - 180; // warehouse south (degrees)
-double whWest = whEast - 180; // warehouse west (degrees)
+	//set up data handling
+	uint8_t antennaList[1] = {2};
+	TMR_RP_init_simple(&plan, 1, antennaList, TMR_TAG_PROTOCOL_GEN2, 1000);
+	TMR_paramSet(rp, TMR_PARAM_READ_PLAN, &plan);
 
-// North = [0, 1], East = [1, 0], South = [0, -1], West = [-1, 0]
-double whNorthVector[2] = {sin(whNorth * DEG2RAD), cos(whNorth * DEG2RAD)}; // unit meter vector, warehouse north
-double whEastVector[2] = {cos(whNorth * DEG2RAD), -1 * sin(whNorth * DEG2RAD)};
-double whSouthVector[2] = {-1 * whNorthVector[0], -1 * whNorthVector[1]};
-double whWestVector[2] = {-1 * whEastVector[0], -1 * whEastVector[1]};
+	TMR_Status err = TMR_read(rp, timeout, NULL);
+	
+	if (*tagCount <  0) {
+		fprintf(stderr, "could not read tags  %d\n", *tagCount);
+	} else {
+		
+		while (TMR_hasMoreTags(rp) == TMR_SUCCESS) {
+			TMR_TagReadData tag_data;
+			
+			TMR_getNextTag(rp, &tag_data);
+			char data[255];
 
-// Define the serial port we're connecting to
-e_vbus_index sensor_id = e_vbus1;
-
-typedef struct Pos {
-	float x;
-	float y;
-	float z;
-} _Pos;
-
-typedef struct Vel {
-	float x;
-	float y;
-	float z;
-} _Vel;
-
-volatile Pos currPos;
-volatile Vel currVel;
-
-void getCurrPos(Pos* destPos) {
-	destPos->x = currPos.x;
-	destPos->y = currPos.y;
-	destPos->z = currPos.z;
-}
-
-typedef struct droneCoords {
-	float x;
-	float y;
-	float z;
-	float yaw;
-};
-
-droneCoords currDroneCoords;
-
-bool moveNorth(Vehicle *vehicle, float offsetDesired)
-{
-  float x = whNorthVector[1] * offsetDesired;
-  float y = whNorthVector[0] * offsetDesired;
-  moveByPositionOffset(vehicle, x, y, 0, currDroneCoords.yaw);
-}
-
-bool moveSouth(Vehicle *vehicle, float offsetDesired)
-{
-  float x = whSouthVector[1] * offsetDesired;
-  float y = whSouthVector[0] * offsetDesired;
-  moveByPositionOffset(vehicle, x, y, 0, currDroneCoords.yaw);
-}
-
-bool moveEast(Vehicle *vehicle, float offsetDesired)
-{
-  float x = whEastVector[1] * offsetDesired;
-  float y = whEastVector[0] * offsetDesired;
-  moveByPositionOffset(vehicle, x, y, 0, currDroneCoords.yaw);
-}
-
-bool moveWest(Vehicle *vehicle, float offsetDesired)
-{
-  float x = whWestVector[1] * offsetDesired;
-  float y = whWestVector[0] * offsetDesired;
-  moveByPositionOffset(vehicle, x, y, 0, currDroneCoords.yaw);
-}
-
-bool turnNorth(Vehicle *vehicle)
-{
-	currDroneCoords.yaw = whNorth;
-	moveByPositionOffset(vehicle, 0, 0, 0, currDroneCoords.yaw);
-}
-
-bool turnSouth(Vehicle *vehicle)
-{
-	currDroneCoords.yaw = whSouth;
-	moveByPositionOffset(vehicle, 0, 0, 0, currDroneCoords.yaw);
-}
-
-bool turnEast(Vehicle *vehicle)
-{
-	currDroneCoords.yaw = whEast;
-	moveByPositionOffset(vehicle, 0, 0, 0, currDroneCoords.yaw);
-}
-
-bool turnWest(Vehicle *vehicle)
-{
-	currDroneCoords.yaw = whWest;
-	moveByPositionOffset(vehicle, 0, 0, 0, currDroneCoords.yaw);
-}
-
-/**Callback optimized for velocity, ultrasonic, and motion data. */
-/**
-int _callback(int data_type, int data_len, char* content) {
-	//get position data if motion data collected
-	if (e_motion == data_type && NULL != content) {
-		motion *m = (motion*) content; // convert content to motion data
-		Pos p;
-		Vel v;
-		p.x = m->position_in_global_x;
-		p.y = m->position_in_global_y;
-		p.z = m->position_in_global_z;
-
-		v.x = m->velocity_in_global_x;
-		v.y = m->velocity_in_global_y;
-		v.z = m->velocity_in_global_z;
-
-		currPos.x = p.x;
-		currPos.y = p.y;
-		currPos.z = p.z;
-
-		currVel.x = v.x;
-		currVel.y = v.y;
-		currVel.z = v.z;
-
-		fprintf(pf, "%f - %f - %f\n", p.x, p.y, p.z);
-		//std::cout << p.x << " " << p.y << " " << std::endl;
+			TMR_bytesToHex(tag_data.tag.epc, tag_data.tag.epcByteCount, data);
+			buffer.push_back(data);
+		}
 	}
-	return 0;
 }
-*/
+
 
 /*! main
  *
@@ -182,6 +86,28 @@ int _callback(int data_type, int data_len, char* content) {
 int
 main(int argc, char** argv)
 {
+  TMR_Reader r;
+  TMR_Reader * rp = &r;
+
+  TMR_Status err = TMR_create(rp, "tmr:///dev/ttyACM0");
+	
+  if (err != TMR_SUCCESS) {
+	fprintf(stderr, "cannot connect reader\n");
+  } else {
+	printf("reader created\n");
+  }
+	
+  //connect the reader
+  err = TMR_connect(rp);
+
+  if (err == TMR_SUCCESS) {
+	printf("reader connected\n");
+  }
+
+  vector<char*> buffer;
+  read_rfid(rp, 1000, buffer);
+  printf("reader destroyed\n");
+  TMR_destroy(rp);
 
   currDroneCoords.x = 0;
   currDroneCoords.y = 0;
@@ -205,7 +131,7 @@ main(int argc, char** argv)
 
 
  // reset_config(); //clear previous data subscriptions
-  std::cout << "configuring reader...." << std::endl;
+  std::cout << "configuring guidance...." << std::endl;
 
   //connect to Guidance, print if error
   int err_code = init_transfer();
@@ -238,7 +164,7 @@ main(int argc, char** argv)
     << "| [c] Warehouse coordinate movement command tests                |"
     << std::endl;
   std::cout
-    << "| [d] Warehouse coordinate rotation commnd tests                 |"
+    << "| [d] Warehouse coordinate rotation command tests                |"
     << std::endl;
   std::cout
     << "| [e] Warehouse traversal                                        |"
@@ -256,35 +182,34 @@ main(int argc, char** argv)
       monitoredLanding(vehicle);
       break;
     case 'b':
+      std::cout << "TAKING OFF" << std::endl;
       monitoredTakeoff(vehicle);
-      std::cout << "FORWARD" << std::endl;
-      moveByPositionOffset(vehicle, 3, 0, 0, 0);
-      std::cout << "rotate" << std::endl;
-      moveByPositionOffset(vehicle, 0, 0, 0, 45);
-      std::cout << "FORWARD" << std::endl;
-      moveByPositionOffset(vehicle, 3, 0, 0, 0);
-      std::cout << "rotate" << std::endl;
-      moveByPositionOffset(vehicle, 0, 0, 0, 45);
-      std::cout << "FORWARD" << std::endl;
-      moveByPositionOffset(vehicle, 3, 0, 0, 0);
-      std::cout << "rotate" << std::endl;
-      moveByPositionOffset(vehicle, 0, 0, 0, 45);
-      std::cout << "FORWARD" << std::endl;
-      moveByPositionOffset(vehicle, 3, 0, 0, 0);
-      std::cout << "rotate" << std::endl;
-      moveByPositionOffset(vehicle, 0, 0, 0, 45);
+      std::cout << "Rotating Eastward" << std::endl;
+      turnEast(vehicle);
+      std::cout << "Move forward (1)" << std::endl;
+      moveEast(vehicle, 0.5); 
+      std::cout << "Move forward (2)" << std::endl;
+      moveEast(vehicle, 0.5); 
+      /**std::cout << "Move forward (3)" << std::endl;
+      moveEast(vehicle, 0.5); 
+      std::cout << "Move forward (4)" << std::endl;
+      moveEast(vehicle, 0.5);
+      std::cout << "Move forward (5)" << std::endl;
+      moveEast(vehicle, 0.5);*/
+      std::cout << "LANDING" << std::endl;
       monitoredLanding(vehicle);
       break;
     case 'c':
       monitoredTakeoff(vehicle);
+      turnNorth(vehicle);
       std::cout << "Move North" << std::endl;
-      moveNorth(vehicle, 5);
+      moveNorth(vehicle, 1);
       std::cout << "Move East" << std::endl;
-      moveEast(vehicle, 5);
+      moveEast(vehicle, 1);
       std::cout << "Move West" << std::endl;
-      moveWest(vehicle, 5);
+      moveWest(vehicle, 1);
       std::cout << "Move South" << std::endl;
-      moveSouth(vehicle, 5);
+      moveSouth(vehicle, 1);
       monitoredLanding(vehicle);
       break;
     case 'd':
@@ -323,10 +248,36 @@ main(int argc, char** argv)
       moveByPositionOffset(vehicle, 0, 0, 3, whSouth);
       moveByPositionOffset(vehicle, 0, 0, -1, whNorth);
       monitoredLanding(vehicle);
+    case 'r': {
+	/*TMR_Reader r;
+  	TMR_Reader * rp = &r;
+
+  	TMR_Status err = TMR_create(rp, "tmr:///dev/ttyACM0");
+	
+  	if (err != TMR_SUCCESS) {
+		fprintf(stderr, "cannot connect reader\n");
+  	} else {
+		printf("reader created\n");
+ 	}
+	
+	//connect the reader
+	err = TMR_connect(rp);
+
+	if (err == TMR_SUCCESS) {
+		printf("reader connected\n");
+	}
+
+	read_rfid(rp, 250);
+	
+	TMR_destroy(rp);
+	break;*/
+    }
     default:
       break;
   }
   fclose(pf);
   err_code = release_transfer();
+
+
   return 0;
 }
