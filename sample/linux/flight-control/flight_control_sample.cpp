@@ -579,10 +579,13 @@ moveByPositionOffset(Vehicle *vehicle, float xOffsetDesired,
     //zCmd = currentBroadcastGP.height + zOffsetDesired;
     zCmd = (-tempPos.z) + zOffsetDesired;
   }
-
+  int printCounter = 0;
   //! Main closed-loop receding setpoint position control
   while (elapsedTimeInMs < timeoutInMilSec)
   {
+    if (printCounter++ % 3 == 0) {
+      std::cout << tempPos.x << " " << tempPos.y << " " << tempPos.x << std::endl;
+    }
     vehicle->control->positionAndYawCtrl(xCmd, yCmd, zCmd,
                                          yawDesiredRad / DEG2RAD);
 

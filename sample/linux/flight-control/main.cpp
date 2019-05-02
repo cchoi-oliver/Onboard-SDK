@@ -38,10 +38,11 @@
 #include <stdlib.h>
 #include <time.h>
 
-//#include <tm_reader.h>
+extern "C" {
+#include <tm_reader.h>
 #include <tm_config.h>
-#include <tmr_read_plan.h>
-
+//#include <tmr_read_plan.h>
+}
 using namespace DJI::OSDK;
 using namespace DJI::OSDK::Telemetry;
 
