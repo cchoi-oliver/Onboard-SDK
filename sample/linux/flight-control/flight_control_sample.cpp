@@ -36,8 +36,9 @@ using namespace DJI::OSDK;
 using namespace DJI::OSDK::Telemetry;
 
 FILE *pf = fopen("position_out.csv", "w");
+FILE *yf = fopen("yaw_out.csv", "w");
 
-double whNorth = 100;  // warehouse north in degrees
+double whNorth = 95;  // warehouse north in degrees
 double whEast = whNorth + 90; // warehouse east (degrees)
 double whSouth = whNorth - 180; // warehouse south (degrees)
 double whWest = whEast - 180; // warehouse west (degrees)
@@ -504,7 +505,8 @@ moveByPositionOffset(Vehicle *vehicle, float xOffsetDesired,
   // Get initial offset. We will update this in a loop later.
   double xOffsetRemaining = xOffsetDesired - localOffset.x;
   double yOffsetRemaining = yOffsetDesired - localOffset.y;
-  double zOffsetRemaining = zOffsetDesired - (-localOffset.z);
+  double zOffsetRemaining = zOffsetDesired - (-localOffset.z); // TODO: change back if needed
+  //double zOffsetRemaining = zOffsetDesired;// - (-localOffset.z); // TODO: change back if needed
 
   double xOffsetRem = xOffsetDesired - tempPos.x;
   double yOffsetRem = yOffsetDesired - tempPos.y;
@@ -576,6 +578,7 @@ moveByPositionOffset(Vehicle *vehicle, float xOffsetDesired,
   }
   else
   {
+    //zCmd = zOffsetDesired;
     zCmd = currentBroadcastGP.height + zOffsetDesired;
     //zCmd = (-tempPos.z) + zOffsetDesired;
   }
@@ -586,6 +589,7 @@ moveByPositionOffset(Vehicle *vehicle, float xOffsetDesired,
     if (printCounter++ % 3 == 0) {
       std::cout << tempPos.x << " " << tempPos.y << " " << tempPos.x << std::endl;
     }
+    fprintf(yf, "%f\n", yawInRad);
     vehicle->control->positionAndYawCtrl(xCmd, yCmd, zCmd,
                                          yawDesiredRad / DEG2RAD);
 
@@ -626,17 +630,24 @@ moveByPositionOffset(Vehicle *vehicle, float xOffsetDesired,
     zOffsetRem = zOffsetDesired - (-tempPos.z);
 
     //! See if we need to modify the setpoint
-    if (std::abs(xOffsetRemaining) < speedFactor)
+    //if (std::abs(xOffsetRemaining) < speedFactor)
+    if (std::abs(xOffsetRem) < speedFactor)
     {
-      xCmd = xOffsetRemaining;
+      //xCmd = xOffsetRemaining;
+      xCmd = xOffsetRem;
     }
-    if (std::abs(yOffsetRemaining) < speedFactor)
+    //if (std::abs(yOffsetRemaining) < speedFactor)
+    if (std::abs(yOffsetRem) < speedFactor)
     {
-      yCmd = yOffsetRemaining;
+      //yCmd = yOffsetRemaining;
+      yCmd = yOffsetRem;
     }
 
-    if (vehicle->isM100() && std::abs(xOffsetRemaining) < posThresholdInM &&
-        std::abs(yOffsetRemaining) < posThresholdInM &&
+    //if (vehicle->isM100() && std::abs(xOffsetRemaining) < posThresholdInM &&
+    //    std::abs(yOffsetRemaining) < posThresholdInM &&
+    //    std::abs(yawInRad - yawDesiredRad) < yawThresholdInRad)
+    if (vehicle->isM100() && std::abs(xOffsetRem) < posThresholdInM &&
+        std::abs(yOffsetRem) < posThresholdInM &&
         std::abs(yawInRad - yawDesiredRad) < yawThresholdInRad)
     {
       //! 1. We are within bounds; start incrementing our in-bound counter

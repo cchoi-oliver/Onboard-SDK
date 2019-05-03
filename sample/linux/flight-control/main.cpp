@@ -184,18 +184,20 @@ main(int argc, char** argv)
     case 'b':
       std::cout << "TAKING OFF" << std::endl;
       monitoredTakeoff(vehicle);
-      std::cout << "Rotating Eastward" << std::endl;
-      turnEast(vehicle);
+      std::cout << "Rotating Southward" << std::endl;
+      turnSouth(vehicle);
       std::cout << "Move forward (1)" << std::endl;
-      moveEast(vehicle, 0.5); 
+      moveSouth(vehicle, 1); 
       std::cout << "Move forward (2)" << std::endl;
-      moveEast(vehicle, 0.5); 
-      /**std::cout << "Move forward (3)" << std::endl;
-      moveEast(vehicle, 0.5); 
+      moveSouth(vehicle, 1);
+      /** 
+      std::cout << "Move forward (3)" << std::endl;
+      moveSouth(vehicle, 1); 
       std::cout << "Move forward (4)" << std::endl;
-      moveEast(vehicle, 0.5);
+      moveSouth(vehicle, 1);
       std::cout << "Move forward (5)" << std::endl;
-      moveEast(vehicle, 0.5);*/
+      moveSouth(vehicle, 1);
+      */
       std::cout << "LANDING" << std::endl;
       monitoredLanding(vehicle);
       break;
@@ -245,9 +247,10 @@ main(int argc, char** argv)
       break;
     case 'f':
       monitoredTakeoff(vehicle);
-      moveByPositionOffset(vehicle, 0, 0, 3, whSouth);
-      moveByPositionOffset(vehicle, 0, 0, -1, whNorth);
+      moveByPositionOffset(vehicle, 0, 0, 1.5, whSouth);
+      moveSouth(vehicle, 1);
       monitoredLanding(vehicle);
+      break;
     case 'r': {
 	/*TMR_Reader r;
   	TMR_Reader * rp = &r;
@@ -276,8 +279,9 @@ main(int argc, char** argv)
       break;
   }
   fclose(pf);
+  fclose(yf);
   err_code = release_transfer();
-
+  std::cout << "ENDING PROGRAM" << std::endl;
 
   return 0;
 }

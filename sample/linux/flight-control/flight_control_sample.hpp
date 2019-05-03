@@ -51,6 +51,7 @@
 
 // Global variables
 extern FILE *pf;
+extern FILE *yf;
 extern double whNorth;
 extern double whEast;
 extern double whSouth;
