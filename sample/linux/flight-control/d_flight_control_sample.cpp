@@ -37,7 +37,7 @@ using namespace DJI::OSDK::Telemetry;
 
 FILE *pf = fopen("position_out.csv", "w");
 
-double whNorth = 100;  // warehouse north in degrees
+double whNorth = 75;  // warehouse north in degrees
 double whEast = whNorth + 90; // warehouse east (degrees)
 double whSouth = whNorth - 180; // warehouse south (degrees)
 double whWest = whEast - 180; // warehouse west (degrees)
@@ -576,8 +576,8 @@ moveByPositionOffset(Vehicle *vehicle, float xOffsetDesired,
   }
   else
   {
-    zCmd = currentBroadcastGP.height + zOffsetDesired;
-    //zCmd = (-tempPos.z) + zOffsetDesired;
+    //zCmd = currentBroadcastGP.height + zOffsetDesired;
+    zCmd = (-tempPos.z) + zOffsetDesired;
   }
   int printCounter = 0;
   //! Main closed-loop receding setpoint position control

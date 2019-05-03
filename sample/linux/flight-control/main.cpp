@@ -86,7 +86,7 @@ void read_rfid(TMR_Reader * rp, uint32_t timeout, vector<char*>& buffer) {
 int
 main(int argc, char** argv)
 {
-  TMR_Reader r;
+  /*TMR_Reader r;
   TMR_Reader * rp = &r;
 
   TMR_Status err = TMR_create(rp, "tmr:///dev/ttyACM0");
@@ -108,7 +108,7 @@ main(int argc, char** argv)
   read_rfid(rp, 1000, buffer);
   printf("reader destroyed\n");
   TMR_destroy(rp);
-
+*/
   currDroneCoords.x = 0;
   currDroneCoords.y = 0;
   currDroneCoords.z = 0;
