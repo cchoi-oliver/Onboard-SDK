@@ -1032,7 +1032,7 @@ traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
 	int   withinBoundsCounter = 0;
 	int   outOfBounds         = 0;
 	int   brakeCounter        = 0;
-	int   speedFactor         = 2;
+	int   speedFactor         = 1; // Changed from 2 to 1
 	float xCmd, yCmd, zCmd;
 
 	// There is a deadband in position control
@@ -1046,7 +1046,7 @@ traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
    */
 	xCmd = speedFactor;
 	yCmd = 0; // No Y coordinate movements - yCmd = 0;
-  zCmd = currentBroadcastGP.height + zOffsetDesired;
+  zCmd = currentBroadcastGP.height + zTarget;
 
 	while (elapsedTimeInMs < timeoutInMilSec)
 	{
@@ -1062,24 +1062,22 @@ traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
 														 static_cast<void*>(&currentBroadcastGP),
 														 static_cast<void*>(&originBroadcastGP));
 		//! See how much farther we have to go
-    xOffsetRemaining = xOffsetDesired - localOffset.x;
-    yOffsetRemaining = yOffsetDesired - localOffset.y;
-    zOffsetRemaining = zOffsetDesired - (-localOffset.z);
+    xOffsetRemaining = xTarget - localOffset.x;
+    yOffsetRemaining = yTarget - localOffset.y;
+    zOffsetRemaining = zTarget - (-localOffset.z);
 		// GUIDANCE data collection
 		getCurrPos(&tempPos);
-    xOffsetRem = xOffsetDesired - tempPos.x;
-    yOffsetRem = yOffsetDesired - tempPos.y;
-    zOffsetRem = zOffsetDesired - (-tempPos.z);
+    xOffsetRem = xTarget - tempPos.x;
+    yOffsetRem = yTarget - tempPos.y;
+    zOffsetRem = zTarget - (-tempPos.z);
 		// TODO: Add angle adjusting code here!!
 		/**
 		if (distance.left < distanceThresh) {
 			curr.yaw = curr.yaw + 2;
-			yawInRad = yawInRad + (2 * DEG2RAD);
-			// HERE IS WHERE WE EDIT OUR XCMD AND YCMD
+			yawDesiredRad = yawDesiredRad + (2 * DEG2RAD);
 		} else if (distance.right < distanceThresh) {
 			Curr.yaw = curr.yaw - 2;
-			yawInRad = yawInRad - (2 * DEG2RAD);
-			// HERE IS WHERE WE EDIT OUR XCMD AND YCMD
+			yawDesiredRad = yawDesiredRad - (2 * DEG2RAD);
 		} */
 
 		//! See if we need to modify the setpoint
@@ -1133,16 +1131,42 @@ traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
 	if (moveToJunction) {
 		std::cout << "Inching towards junction" << std::endl;
 		int junctionCounter = 0;
-		int junctionCounterMax = 50;
+		int junctionCounterMax = 1000;
 		int junctionThresh = 400;
 		elapsedTimeInMs = 0;
-		timeoutInMilSec = 5000;
-		xCmd = speedFactor;
+		timeoutInMilSec = 10000;
+		xCmd = speedFactor / 2;
 		yCmd = 0; // No Y coordinate movements - yCmd = 0;
-		while (junctionCounter < junctionCounterMax) {
-			//Move();
+		while (elapsedTimeInMs < timeoutInMilSec) {
+			vehicle->control->positionAndYawCtrlBody(xCmd, yCmd, zCmd,
+																							 yawDesiredRad / DEG2RAD);
+			usleep(cycleTimeInMs * 1000);
+			elapsedTimeInMs += cycleTimeInMs;
+			broadcastQ         = vehicle->broadcast->getQuaternion();
+      yawInRad           = toEulerAngle((static_cast<void*>(&broadcastQ))).z;
+      currentBroadcastGP = vehicle->broadcast->getGlobalPosition();
+      localOffsetFromGpsOffset(vehicle, localOffset,
+                               static_cast<void*>(&currentBroadcastGP),
+                               static_cast<void*>(&originBroadcastGP));
+			// TODO: REPLACE FOLLOWING IF STATEMENT TO CHECK FOR DISTANCE SENSOR
+			//if (distance.left > junctionThresh)
+			if (vehicle->isM100() && std::abs(xOffsetRem) < xyThresh &&
+				  std::abs(yOffsetRem) < xyThresh &&
+				  std::abs(yawInRad - yawDesiredRad) < yawThresholdInRad)
+			{
+			 	//! 1. We are within bounds; start incrementing our in-bound counter
+			  junctionCounter += cycleTimeInMs;
+				xCmd = speedFactor / 3;
+			} else {
+				junctionCounter = 0;
+				xCmd = speedFactor / 2;
+			}
+			//! 4. If within bounds, set flag and break
+			if (junctionCounter >= junctionCounterMax)
+			{
+			 	break;
+			}
 		}
-
 	}
 	return ACK::SUCCESS;
 }
