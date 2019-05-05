@@ -56,11 +56,16 @@ e_vbus_index sensor_id = e_vbus1;
 
 volatile Pos currPos;
 volatile Vel currVel;
+volatile obstacle_distance currDists;
 
 void getCurrPos(Pos* destPos) {
 	destPos->x = currPos.x;
 	destPos->y = currPos.y;
 	destPos->z = currPos.z;
+}
+
+void getCurrDists(obstacle_distance* destDists) {
+	*destDists = currDists;
 }
 
 droneCoords currDroneCoords;
@@ -115,6 +120,22 @@ bool turnWest(Vehicle *vehicle)
 {
 	currDroneCoords.yaw = whWest;
 	moveByPositionOffset(vehicle, 0, 0, 0, currDroneCoords.yaw);
+}
+
+bool traverseAisleNorth(Vehicle *vehicle, float offsetDesired)
+{
+	turnNorth(vehicle);
+	float x = whNorthVector[1] * offsetDesired;
+  float y = whNorthVector[0] * offsetDesired;
+	traverseAisle(vehicle, x, y, 0, currDroneCoords.yaw, true);
+}
+
+bool traverseAisleSouth(Vehicle *vehicle, float offsetDesired)
+{
+	turnSouth(vehicle);
+	float x = whSouthVector[1] * offsetDesired;
+  float y = whSouthVector[0] * offsetDesired;
+  traverseAisle(vehicle, x, y, 0, currDroneCoords.yaw, true);
 }
 
 typedef struct Data {
@@ -965,8 +986,8 @@ monitoredLanding(Vehicle* vehicle, int timeout)
 // Aisle traversal command
 bool
 traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
-							float yawDesired, float xyThresh, float yawThresholdInDeg,
-							bool moveToJunction)
+							float yawDesired, bool moveToJunction,
+							float xyThresh, float yawThresholdInDeg)
 {
 	int responseTimeout              = 1;
 	int timeoutInMilSec              = 10000;
@@ -976,18 +997,18 @@ traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
   int withinControlBoundsTimeReqmt = 50 * cycleTimeInMs; // 50 cycles
   int pkgIndex;
 
-	int checkZoneCounter 						 = 0;
-	int checkZoneCounterThresh			 = 100;
+	int distanceThresh 							 = 180; // Min obj distance to start turning
 
 	Pos tempPos; // Position struct to hold current value of currPos (global)
-	// TODO: add temp structure to hold curr value of the obstacle distance data
+	obstacle_distance tempDists; // var to hold curr value of obstacle distances
+	//Index to direction mappings: 0 - d, 1 - f, 2 - r, 3 - b, 4 - l
 
 	// Wait for data to come in
 	sleep(1);
 
 	// Get data
 	getCurrPos(&tempPos);
-	//getCurrDist
+	getCurrDists(&tempDists);
 
 	// Global position retrieved via subscription
 	Telemetry::TypeMap<TOPIC_GPS_FUSED>::type currentSubscriptionGPS;
@@ -1071,15 +1092,17 @@ traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
     xOffsetRem = xTarget - tempPos.x;
     yOffsetRem = yTarget - tempPos.y;
     zOffsetRem = zTarget - (-tempPos.z);
-		// TODO: Add angle adjusting code here!!
-		/**
-		if (distance.left < distanceThresh) {
-			curr.yaw = curr.yaw + 2;
+
+		getCurrDists(&tempDists);
+		// Left sensor triggered - rotate clockwise
+		if (tempDists->distance[4] < distanceThresh) {
+			//curr.yaw = curr.yaw + 2;
 			yawDesiredRad = yawDesiredRad + (2 * DEG2RAD);
-		} else if (distance.right < distanceThresh) {
-			Curr.yaw = curr.yaw - 2;
+		// Right sensor triggered - rotate counter clockwise
+		} else if (tempDists->distance[2] < distanceThresh) {
+			//Curr.yaw = curr.yaw - 2;
 			yawDesiredRad = yawDesiredRad - (2 * DEG2RAD);
-		} */
+		}
 
 		//! See if we need to modify the setpoint
     //if (std::abs(xOffsetRemaining) < speedFactor)
@@ -1088,12 +1111,12 @@ traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
       xCmd = xOffsetRemaining;
       //xCmd = xOffsetRem;
     }
-		if (vehicle->isM100() && std::abs(xOffsetRem) < xyThresh &&
-        std::abs(yOffsetRem) < xyThresh &&
+		if (vehicle->isM100() && std::abs(xOffsetRemaining) < xyThresh &&
+        std::abs(yOffsetRemaining) < xyThresh &&
         std::abs(yawInRad - yawDesiredRad) < yawThresholdInRad)
     {
-      //! 1. We are within bounds; start incrementing our in-bound counter
-      withinBoundsCounter += cycleTimeInMs;
+	    //! 1. We are within bounds; start incrementing our in-bound counter
+	    withinBoundsCounter += cycleTimeInMs;
     } else {
 			if (withinBoundsCounter != 0) {
 				//! 2. Start incrementing an out-of-bounds counter
@@ -1149,19 +1172,18 @@ traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
       localOffsetFromGpsOffset(vehicle, localOffset,
                                static_cast<void*>(&currentBroadcastGP),
                                static_cast<void*>(&originBroadcastGP));
-			/**
-			if (distance.left < distanceThresh) {
-				curr.yaw = curr.yaw + 2;
+			getCurrDists(&tempDists);
+			// Left sensor triggered - rotate clockwise
+			if (tempDists->distance[4] < distanceThresh) {
+				//curr.yaw = curr.yaw + 2;
 				yawDesiredRad = yawDesiredRad + (2 * DEG2RAD);
-			} else if (distance.right < distanceThresh) {
-				Curr.yaw = curr.yaw - 2;
+			// Right sensor triggered - rotate counter clockwise
+			} else if (tempDists->distance[2] < distanceThresh) {
+				//Curr.yaw = curr.yaw - 2;
 				yawDesiredRad = yawDesiredRad - (2 * DEG2RAD);
-			} */
+			}
 			// TODO: REPLACE FOLLOWING IF STATEMENT TO CHECK FOR DISTANCE SENSOR
-			//if (distance.left > junctionThresh)
-			if (vehicle->isM100() && std::abs(xOffsetRem) < xyThresh &&
-				  std::abs(yOffsetRem) < xyThresh &&
-				  std::abs(yawInRad - yawDesiredRad) < yawThresholdInRad)
+			if (tempDists->distance[4] > junctionThresh)
 			{
 			 	//! 1. We are within bounds; start incrementing our in-bound counter
 			  junctionCounter += cycleTimeInMs;
@@ -1175,7 +1197,22 @@ traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
 			{
 			 	break;
 			}
-		}
+		} // End of while loop
+		if (elapsedTimeInMs >= timeoutInMilSec)
+	  {
+	    std::cout << "Task timeout!\n";
+	    if (!vehicle->isM100() && !vehicle->isLegacyM600())
+	    {
+	      ACK::ErrorCode ack =
+	        vehicle->subscribe->removePackage(pkgIndex, responseTimeout);
+	      if (ACK::getError(ack))
+	      {
+	        std::cout << "Error unsubscribing; please restart the drone/FC to get "
+	                     "back to a clean state.\n";
+	      }
+	    }
+	    return ACK::FAIL;
+	  }
 	}
 	return ACK::SUCCESS;
 }
