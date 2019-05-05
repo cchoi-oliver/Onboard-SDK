@@ -218,7 +218,7 @@ public:
   typedef struct CtrlData
   {
     uint8_t flag;  /*!< control data flag consists of 8 bits.
- 
+
                       - CtrlData.flag = ( DJI::OSDK::Control::HorizontalLogic |
                       DJI::OSDK::Control::VerticalLogic |
                       DJI::OSDK::Control::YawLogic |
@@ -405,6 +405,8 @@ public:
    *  @param yaw yaw set-point (deg)
    */
   void positionAndYawCtrl(float32_t x, float32_t y, float32_t z, float32_t yaw);
+  void positionAndYawCtrlBody(float32_t x, float32_t y, float32_t z,
+                              float32_t yaw);
 
   /*! @brief Control the velocity and yaw rate of the vehicle.
    *  The reference frame is the DJI::OSDK::Control::HORIZONTAL_GROUND (NEU).
