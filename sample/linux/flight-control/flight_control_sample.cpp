@@ -150,7 +150,7 @@ int _callback(int data_type, int data_len, char* content) {
 
 		currData.p = p;
 		currData.v = v;
-		
+
 		//fprintf(pf, "%f, %f, %f\n", p.x, p.y, p.z);
 		//std::cout << p.x << " " << p.y << " " << std::endl;
 	}
@@ -165,10 +165,10 @@ int _callback(int data_type, int data_len, char* content) {
 			}
 		}
 			//printf( "frame index:%d,stamp:%d\n", oa->frame_index, oa->time_stamp );
-		
+
 		//print to file
 		fprintf(stdout,  "%u, %u, %u, %u, %u\n", oa->distance[0], oa->distance[1], oa->distance[2], oa->distance[3], oa->distance[4]);
-		
+
 	}
 
 	return 0;
@@ -959,6 +959,192 @@ monitoredLanding(Vehicle* vehicle, int timeout)
   }
 
   return true;
+}
+
+// Aisle traversal command
+bool
+traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
+							float yawDesired, float xyThresh, float yawThreshInDeg,
+							bool moveToJunction)
+{
+	int responseTimeout              = 1;
+	int timeoutInMilSec              = 10000;
+  int controlFreqInHz              = 50; // Hz
+  int cycleTimeInMs                = 1000 / controlFreqInHz;
+  int outOfControlBoundsTimeLimit  = 10 * cycleTimeInMs; // 10 cycles
+  int withinControlBoundsTimeReqmt = 50 * cycleTimeInMs; // 50 cycles
+  int pkgIndex;
+
+	int checkZoneCounter 						 = 0;
+	int checkZoneCounterThresh			 = 100;
+
+	Pos tempPos; // Position struct to hold current value of currPos (global)
+	// TODO: add temp structure to hold curr value of the obstacle distance data
+
+	// Wait for data to come in
+	sleep(1);
+
+	// Get data
+	getCurrPos(&tempPos);
+	//getCurrDist
+
+	// Global position retrieved via subscription
+	Telemetry::TypeMap<TOPIC_GPS_FUSED>::type currentSubscriptionGPS;
+	Telemetry::TypeMap<TOPIC_GPS_FUSED>::type originSubscriptionGPS;
+	// Global position retrieved via broadcast
+	Telemetry::GlobalPosition currentBroadcastGP;
+	Telemetry::GlobalPosition originBroadcastGP;
+
+	// Convert position offset from first position to local coordinates
+	Telemetry::Vector3f localOffset;
+	// OSDK version
+	currentBroadcastGP = vehicle->broadcast->getGlobalPosition();
+	originBroadcastGP  = currentBroadcastGP;
+	localOffsetFromGpsOffset(vehicle, localOffset,
+													 static_cast<void*>(&currentBroadcastGP),
+													 static_cast<void*>(&originBroadcastGP));
+  // TODO: Do we want to input offset into traversAisle and calculate
+	// offset desired from there?
+	double xOffsetRemaining = xTarget - localOffset.x;
+	double xOffsetRemaining = yTarget - localOffset.y;
+	double zOffsetRemaining = zTarget - (-localOffset.z);
+
+	double xOffsetRem = xTarget - tempPos.x;
+	double yOffsetRem = yTarget - tempPos.y;
+	double zOffsetRem = zTarget - (-tempPos.z);
+
+	// Conversions
+	double yawDesiredRad     = DEG2RAD * yawDesired;
+  double yawThresholdInRad = DEG2RAD * yawThresholdInDeg;
+
+	//! Get Euler angle
+
+	// Quaternion retrieved via subscription
+	Telemetry::TypeMap<TOPIC_QUATERNION>::type subscriptionQ;
+	// Quaternion retrieved via broadcast
+	Telemetry::Quaternion broadcastQ;
+
+	double yawInRad;
+	broadcastQ = vehicle->broadcast->getQuaternion();
+	yawInRad   = toEulerAngle((static_cast<void*>(&broadcastQ))).z / DEG2RAD;
+
+	int   elapsedTimeInMs     = 0;
+	int   withinBoundsCounter = 0;
+	int   outOfBounds         = 0;
+	int   brakeCounter        = 0;
+	int   speedFactor         = 2;
+	float xCmd, yCmd, zCmd;
+
+	// There is a deadband in position control
+  // the z cmd is absolute height
+  // while x and y are in relative
+  float zDeadband = 1.2; // since vehicle->isM100()
+	/*! Calculate the inputs to send the position controller. We implement basic
+   *  receding setpoint position control and the setpoint is always 1 m away
+   *  from the current position - until we get within a threshold of the goal.
+   *  From that point on, we send the remaining distance as the setpoint.
+   */
+	xCmd = speedFactor;
+	yCmd = 0; // No Y coordinate movements - yCmd = 0;
+  zCmd = currentBroadcastGP.height + zOffsetDesired;
+
+	while (elapsedTimeInMs < timeoutInMilSec)
+	{
+		vehicle->control->positionAndYawCtrlBody(xCmd, yCmd, zCmd,
+																						 yawDesiredRad / DEG2RAD);
+    usleep(cycleTimeInMs * 1000);
+		elapsedTimeInMs += cycleTimeInMs;
+		//! Get current position in required coordinates and units
+		broadcastQ         = vehicle->broadcast->getQuaternion();
+		yawInRad           = toEulerAngle((static_cast<void*>(&broadcastQ))).z;
+		currentBroadcastGP = vehicle->broadcast->getGlobalPosition();
+		localOffsetFromGpsOffset(vehicle, localOffset,
+														 static_cast<void*>(&currentBroadcastGP),
+														 static_cast<void*>(&originBroadcastGP));
+		//! See how much farther we have to go
+    xOffsetRemaining = xOffsetDesired - localOffset.x;
+    yOffsetRemaining = yOffsetDesired - localOffset.y;
+    zOffsetRemaining = zOffsetDesired - (-localOffset.z);
+		// GUIDANCE data collection
+		getCurrPos(&tempPos);
+    xOffsetRem = xOffsetDesired - tempPos.x;
+    yOffsetRem = yOffsetDesired - tempPos.y;
+    zOffsetRem = zOffsetDesired - (-tempPos.z);
+		// TODO: Add angle adjusting code here!!
+		/**
+		if (distance.left < distanceThresh) {
+			curr.yaw = curr.yaw + 2;
+			yawInRad = yawInRad + (2 * DEG2RAD);
+			// HERE IS WHERE WE EDIT OUR XCMD AND YCMD
+		} else if (distance.right < distanceThresh) {
+			Curr.yaw = curr.yaw - 2;
+			yawInRad = yawInRad - (2 * DEG2RAD);
+			// HERE IS WHERE WE EDIT OUR XCMD AND YCMD
+		} */
+
+		//! See if we need to modify the setpoint
+    //if (std::abs(xOffsetRemaining) < speedFactor)
+    if (std::abs(xOffsetRem) < speedFactor)
+    {
+      xCmd = xOffsetRemaining;
+      //xCmd = xOffsetRem;
+    }
+		if (vehicle->isM100() && std::abs(xOffsetRem) < xyThresh &&
+        std::abs(yOffsetRem) < xyThresh &&
+        std::abs(yawInRad - yawDesiredRad) < yawThresholdInRad)
+    {
+      //! 1. We are within bounds; start incrementing our in-bound counter
+      withinBoundsCounter += cycleTimeInMs;
+    } else {
+			if (withinBoundsCounter != 0) {
+				//! 2. Start incrementing an out-of-bounds counter
+        outOfBounds += cycleTimeInMs;
+			}
+		}
+    //! 3. Reset withinBoundsCounter if necessary
+    if (outOfBounds > outOfControlBoundsTimeLimit)
+    {
+      withinBoundsCounter = 0;
+      outOfBounds         = 0;
+    }
+    //! 4. If within bounds, set flag and break
+    if (withinBoundsCounter >= withinControlBoundsTimeReqmt)
+    {
+      break;
+    }
+	} // End of while loop
+	if (elapsedTimeInMs >= timeoutInMilSec)
+  {
+    std::cout << "Task timeout!\n";
+    if (!vehicle->isM100() && !vehicle->isLegacyM600())
+    {
+      ACK::ErrorCode ack =
+        vehicle->subscribe->removePackage(pkgIndex, responseTimeout);
+      if (ACK::getError(ack))
+      {
+        std::cout << "Error unsubscribing; please restart the drone/FC to get "
+                     "back to a clean state.\n";
+      }
+    }
+    return ACK::FAIL;
+  }
+	// If we want to move to a junction, we want to continue moving until
+	// we reach the junction.
+	if (moveToJunction) {
+		std::cout << "Inching towards junction" << std::endl;
+		int junctionCounter = 0;
+		int junctionCounterMax = 50;
+		int junctionThresh = 400;
+		elapsedTimeInMs = 0;
+		timeoutInMilSec = 5000;
+		xCmd = speedFactor;
+		yCmd = 0; // No Y coordinate movements - yCmd = 0;
+		while (junctionCounter < junctionCounterMax) {
+			//Move();
+		}
+
+	}
+	return ACK::SUCCESS;
 }
 
 // Helper Functions

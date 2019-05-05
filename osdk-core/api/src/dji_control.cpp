@@ -370,6 +370,17 @@ Control::positionAndYawCtrl(float32_t x, float32_t y, float32_t z,
   this->flightCtrl(data);
 }
 
+Control::positionAndYawCtrlBody(float32_t x, float32_t y, float32_t z,
+                                float32_t yaw)
+{
+  //
+  uint8_t ctrl_flag = (VERTICAL_POSITION | HORIZONTAL_POSITION | YAW_ANGLE |
+                       HORIZONTAL_BODY | STABLE_ENABLE);
+  CtrlData data(ctrl_flag, x, y, z, yaw);
+
+  this->flightCtrl(data);
+}
+
 void
 Control::velocityAndYawRateCtrl(float32_t Vx, float32_t Vy, float32_t Vz,
                                 float32_t yawRate)
