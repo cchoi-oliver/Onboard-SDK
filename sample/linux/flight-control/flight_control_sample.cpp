@@ -1148,6 +1148,14 @@ traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
       localOffsetFromGpsOffset(vehicle, localOffset,
                                static_cast<void*>(&currentBroadcastGP),
                                static_cast<void*>(&originBroadcastGP));
+			/**
+			if (distance.left < distanceThresh) {
+				curr.yaw = curr.yaw + 2;
+				yawDesiredRad = yawDesiredRad + (2 * DEG2RAD);
+			} else if (distance.right < distanceThresh) {
+				Curr.yaw = curr.yaw - 2;
+				yawDesiredRad = yawDesiredRad - (2 * DEG2RAD);
+			} */
 			// TODO: REPLACE FOLLOWING IF STATEMENT TO CHECK FOR DISTANCE SENSOR
 			//if (distance.left > junctionThresh)
 			if (vehicle->isM100() && std::abs(xOffsetRem) < xyThresh &&

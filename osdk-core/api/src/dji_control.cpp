@@ -370,6 +370,7 @@ Control::positionAndYawCtrl(float32_t x, float32_t y, float32_t z,
   this->flightCtrl(data);
 }
 
+void
 Control::positionAndYawCtrlBody(float32_t x, float32_t y, float32_t z,
                                 float32_t yaw)
 {
