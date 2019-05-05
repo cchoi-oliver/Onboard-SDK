@@ -1105,7 +1105,7 @@ traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
 
 		//! See if we need to modify the setpoint
     //if (std::abs(xOffsetRemaining) < speedFactor)
-    if (std::abs(xOffsetRem) < speedFactor)
+    if (std::abs(xOffsetRemaining) < speedFactor)
     {
       xCmd = xOffsetRemaining;
       //xCmd = xOffsetRem;
