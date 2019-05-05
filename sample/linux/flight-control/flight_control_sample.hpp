@@ -77,8 +77,10 @@ typedef struct Vel {
 
 extern volatile Pos currPos;
 extern volatile Vel currVel;
+extern volatile obstacle_distance currDists;
 
 void getCurrPos(Pos* destPos);
+void getCurrDists(obstacle_distance* destDists);
 
 struct droneCoords {
 	float x;
@@ -125,6 +127,10 @@ bool moveByPositionOffset(DJI::OSDK::Vehicle *vehicle, float xOffsetDesired,
                           float yOffsetDesired, float zOffsetDesired,
                           float yawDesired, float posThresholdInM = 0.2,
                           float yawThresholdInDeg = 1.0);
+
+bool traverseAisle(DJI::OSDK::Vehicle *vehicle, float xTarget, float yTarget,
+									 float zTarget float yawDesired, bool moveToJunction,
+									 float xyThresh = 0.5, float yawThresholdInDeg = 1.0);
 
 /*! Monitored Landing (Blocking API call). Return status as well as ack.
     This version of takeoff makes sure your aircraft actually took off
