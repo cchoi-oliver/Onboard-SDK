@@ -31,14 +31,16 @@
  */
 
 #include "flight_control_sample.hpp"
+#include <vector>
 
+using std::vector;
 using namespace DJI::OSDK;
 using namespace DJI::OSDK::Telemetry;
 
 FILE *pf = fopen("position_out.csv", "w");
 FILE *yf = fopen("yaw_out.csv", "w");
 
-double whNorth = 95;  // warehouse north in degrees
+double whNorth = 92;  // warehouse north in degrees
 double whEast = whNorth + 90; // warehouse east (degrees)
 double whSouth = whNorth - 180; // warehouse south (degrees)
 double whWest = whEast - 180; // warehouse west (degrees)
@@ -115,6 +117,14 @@ bool turnWest(Vehicle *vehicle)
 	moveByPositionOffset(vehicle, 0, 0, 0, currDroneCoords.yaw);
 }
 
+typedef struct Data {
+	obstacle_distance o;
+	Pos p;
+	Vel v;
+} _Data;
+
+Data currData;
+
 /**Callback optimized for velocity, ultrasonic, and motion data. */
 int _callback(int data_type, int data_len, char* content) {
 	//get position data if motion data collected
@@ -138,10 +148,35 @@ int _callback(int data_type, int data_len, char* content) {
 		currVel.y = v.y;
 		currVel.z = v.z;
 
-		fprintf(pf, "%f, %f, %f\n", p.x, p.y, p.z);
+		currData.p = p;
+		currData.v = v;
+		
+		//fprintf(pf, "%f, %f, %f\n", p.x, p.y, p.z);
 		//std::cout << p.x << " " << p.y << " " << std::endl;
 	}
+	if ( e_obstacle_distance == data_type && NULL != content ){
+		obstacle_distance *oa = (obstacle_distance*)content;
+		currData.o = *oa;
+		//printf( "obstacle distance:" );
+		for ( int i = 0; i < CAMERA_PAIR_NUM; ++i ) {
+			//printf( " %u\n",  oa->distance[i] );
+			if (oa->distance[i] < 150) {
+				printf("DETECTED OBSTACLE on sensor: \n", i);
+			}
+		}
+			//printf( "frame index:%d,stamp:%d\n", oa->frame_index, oa->time_stamp );
+		
+		//print to file
+		fprintf(stdout,  "%u, %u, %u, %u, %u\n", oa->distance[0], oa->distance[1], oa->distance[2], oa->distance[3], oa->distance[4]);
+		
+	}
+
 	return 0;
+}
+
+/** Function for handling objects within our danger zone. */
+bool avoid(Vehicle *vehicle) {
+	return true;
 }
 
 /*! Monitored Takeoff (Blocking API call). Return status as well as ack.
@@ -587,7 +622,7 @@ moveByPositionOffset(Vehicle *vehicle, float xOffsetDesired,
   while (elapsedTimeInMs < timeoutInMilSec)
   {
     if (printCounter++ % 3 == 0) {
-      std::cout << tempPos.x << " " << tempPos.y << " " << tempPos.x << std::endl;
+      //std::cout << tempPos.x << " " << tempPos.y << " " << tempPos.x << std::endl;
     }
     fprintf(yf, "%f\n", yawInRad);
     vehicle->control->positionAndYawCtrl(xCmd, yCmd, zCmd,

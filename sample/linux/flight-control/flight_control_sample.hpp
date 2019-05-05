@@ -68,11 +68,13 @@ typedef struct Pos {
 	float y;
 	float z;
 } _Pos;
+
 typedef struct Vel {
 	float x;
 	float y;
 	float z;
 } _Vel;
+
 extern volatile Pos currPos;
 extern volatile Vel currVel;
 

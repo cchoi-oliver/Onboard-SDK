@@ -140,7 +140,11 @@ main(int argc, char** argv)
   if (err_code == 0) {
 	  std::cout << "Connected to Guidance" << std::endl;
   }
-  //:
+
+  //select data types we want
+  select_obstacle_distance();
+  select_motion();
+
 
   //set _callback as the event handler for all Guidance events
   err_code = set_sdk_event_handler(_callback);
@@ -172,7 +176,11 @@ main(int argc, char** argv)
   std::cout
     << "| [f] Z axis movement (ascend, descend)                          |"
     << std::endl;
-  char inputChar;
+  std::cout
+    << "| [g] get ganster with dimitri                                   |"
+    << std::endl;
+
+  char inputChar = 'g';
   std::cin >> inputChar;
 
   switch (inputChar)
@@ -186,18 +194,18 @@ main(int argc, char** argv)
       monitoredTakeoff(vehicle);
       std::cout << "Rotating Southward" << std::endl;
       turnSouth(vehicle);
+      std::cout << "Moving higher" << std::endl;
+      moveByPositionOffset(vehicle, 0, 0, 1.5, whSouth);
       std::cout << "Move forward (1)" << std::endl;
-      moveSouth(vehicle, 1); 
+      moveSouth(vehicle, 1.5); 
       std::cout << "Move forward (2)" << std::endl;
-      moveSouth(vehicle, 1);
-      /** 
+      moveSouth(vehicle, 1.5); 
       std::cout << "Move forward (3)" << std::endl;
-      moveSouth(vehicle, 1); 
+      moveSouth(vehicle, 1.5); 
       std::cout << "Move forward (4)" << std::endl;
-      moveSouth(vehicle, 1);
+      moveSouth(vehicle, 1.5);
       std::cout << "Move forward (5)" << std::endl;
-      moveSouth(vehicle, 1);
-      */
+      moveSouth(vehicle, 1.5);
       std::cout << "LANDING" << std::endl;
       monitoredLanding(vehicle);
       break;
@@ -251,6 +259,32 @@ main(int argc, char** argv)
       moveSouth(vehicle, 1);
       monitoredLanding(vehicle);
       break;
+    case 'g':
+      std::cout << "TAKING OFF" << std::endl;
+      monitoredTakeoff(vehicle);
+      std::cout<<"take off complete"<<std::endl;
+
+      std::cout << "Rotating Southward" << std::endl;
+      turnSouth(vehicle);
+      std::cout << "Moving higher" << std::endl;
+      moveByPositionOffset(vehicle, 0, 0, 1.5, whSouth);
+      std::cout<<"getting next level high" <<std::endl;
+      moveByPositionOffset(vehicle,0,0,2,whSouth);
+
+      std::cout << "Move forward (1)" << std::endl;
+      moveSouth(vehicle, 15); 
+      /*std::cout << "Move forward (2)" << std::endl;
+      moveSouth(vehicle, 1.5); 
+      std::cout << "Move forward (3)" << std::endl;
+      moveSouth(vehicle, 1.5); 
+      std::cout << "Move forward (4)" << std::endl;
+      moveSouth(vehicle, 1.5);
+      std::cout << "Move forward (5)" << std::endl;
+      moveSouth(vehicle, 1.5);*/
+      std::cout << "LANDING" << std::endl;
+      monitoredLanding(vehicle);
+
+
     case 'r': {
 	/*TMR_Reader r;
   	TMR_Reader * rp = &r;
