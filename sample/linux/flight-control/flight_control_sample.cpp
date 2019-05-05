@@ -161,13 +161,14 @@ int _callback(int data_type, int data_len, char* content) {
 		for ( int i = 0; i < CAMERA_PAIR_NUM; ++i ) {
 			//printf( " %u\n",  oa->distance[i] );
 			if (oa->distance[i] < 150) {
-				printf("DETECTED OBSTACLE on sensor: \n", i);
+				//printf("DETECTED OBSTACLE on sensor: %d\n", i);
+				//printf("obstacle distance: %d\n", oa->distance[i]);
 			}
 		}
 			//printf( "frame index:%d,stamp:%d\n", oa->frame_index, oa->time_stamp );
 
 		//print to file
-		fprintf(stdout,  "%u, %u, %u, %u, %u\n", oa->distance[0], oa->distance[1], oa->distance[2], oa->distance[3], oa->distance[4]);
+		//fprintf(stdout,  "%u, %u, %u, %u, %u\n", oa->distance[0], oa->distance[1], oa->distance[2], oa->distance[3], oa->distance[4]);
 
 	}
 
@@ -730,7 +731,7 @@ moveByPositionOffset(Vehicle *vehicle, float xOffsetDesired,
     }
   }
 
-  if (elapsedTimeInMs >= timeoutInMilSec)
+  /*if (elapsedTimeInMs >= timeoutInMilSec)
   {
     std::cout << "Task timeout!\n";
     if (!vehicle->isM100() && !vehicle->isLegacyM600())
@@ -744,7 +745,7 @@ moveByPositionOffset(Vehicle *vehicle, float xOffsetDesired,
       }
     }
     return ACK::FAIL;
-  }
+  }*/
 
   if (!vehicle->isM100() && !vehicle->isLegacyM600())
   {
@@ -1111,7 +1112,7 @@ traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
       break;
     }
 	} // End of while loop
-	if (elapsedTimeInMs >= timeoutInMilSec)
+	/*if (elapsedTimeInMs >= timeoutInMilSec)
   {
     std::cout << "Task timeout!\n";
     if (!vehicle->isM100() && !vehicle->isLegacyM600())
@@ -1125,7 +1126,7 @@ traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
       }
     }
     return ACK::FAIL;
-  }
+  }*/
 	// If we want to move to a junction, we want to continue moving until
 	// we reach the junction.
 	if (moveToJunction) {
