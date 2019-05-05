@@ -75,12 +75,20 @@ typedef struct Vel {
 	float z;
 } _Vel;
 
+typedef struct Dists {
+	unsigned short d;
+	unsigned short f;
+	unsigned short l;
+	unsigned short b;
+	unsigned short r;
+} _Dists;
+
 extern volatile Pos currPos;
 extern volatile Vel currVel;
-extern volatile obstacle_distance currDists;
+extern volatile Dists currDists;
 
 void getCurrPos(Pos* destPos);
-void getCurrDists(obstacle_distance* destDists);
+void getCurrDists(Dists* destDists);
 
 struct droneCoords {
 	float x;
@@ -98,6 +106,8 @@ bool turnNorth(Vehicle *vehicle);
 bool turnSouth(Vehicle *vehicle);
 bool turnEast(Vehicle *vehicle);
 bool turnWest(Vehicle *vehicle);
+bool traverseAisleNorth(Vehicle *vehicle, float offsetDesired, bool toJunction);
+bool traverseAisleSouth(Vehicle *vehicle, float offsetDesired, bool toJunction);
 
 int _callback(int data_type, int data_len, char* content);
 
@@ -129,8 +139,8 @@ bool moveByPositionOffset(DJI::OSDK::Vehicle *vehicle, float xOffsetDesired,
                           float yawThresholdInDeg = 1.0);
 
 bool traverseAisle(DJI::OSDK::Vehicle *vehicle, float xTarget, float yTarget,
-									 float zTarget float yawDesired, bool moveToJunction,
-									 float xyThresh = 0.5, float yawThresholdInDeg = 1.0);
+		   float zTarget, float yawDesired, bool moveToJunction,
+		   float xyThresh = 0.5, float yawThresholdInDeg = 1.0);
 
 /*! Monitored Landing (Blocking API call). Return status as well as ack.
     This version of takeoff makes sure your aircraft actually took off

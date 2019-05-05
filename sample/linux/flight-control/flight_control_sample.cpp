@@ -56,7 +56,7 @@ e_vbus_index sensor_id = e_vbus1;
 
 volatile Pos currPos;
 volatile Vel currVel;
-volatile obstacle_distance currDists;
+volatile Dists currDists;
 
 void getCurrPos(Pos* destPos) {
 	destPos->x = currPos.x;
@@ -64,8 +64,12 @@ void getCurrPos(Pos* destPos) {
 	destPos->z = currPos.z;
 }
 
-void getCurrDists(obstacle_distance* destDists) {
-	*destDists = currDists;
+void getCurrDists(Dists* destDists) {
+	destDists->d = currDists.d;
+	destDists->f = currDists.f;
+	destDists->l = currDists.l;
+	destDists->b = currDists.b;
+	destDists->r = currDists.r;
 }
 
 droneCoords currDroneCoords;
@@ -122,20 +126,20 @@ bool turnWest(Vehicle *vehicle)
 	moveByPositionOffset(vehicle, 0, 0, 0, currDroneCoords.yaw);
 }
 
-bool traverseAisleNorth(Vehicle *vehicle, float offsetDesired)
+bool traverseAisleNorth(Vehicle *vehicle, float offsetDesired, bool toJunction)
 {
 	turnNorth(vehicle);
 	float x = whNorthVector[1] * offsetDesired;
   float y = whNorthVector[0] * offsetDesired;
-	traverseAisle(vehicle, x, y, 0, currDroneCoords.yaw, true);
+	traverseAisle(vehicle, x, y, 0, currDroneCoords.yaw, toJunction);
 }
 
-bool traverseAisleSouth(Vehicle *vehicle, float offsetDesired)
+bool traverseAisleSouth(Vehicle *vehicle, float offsetDesired, bool toJunction)
 {
 	turnSouth(vehicle);
 	float x = whSouthVector[1] * offsetDesired;
   float y = whSouthVector[0] * offsetDesired;
-  traverseAisle(vehicle, x, y, 0, currDroneCoords.yaw, true);
+  traverseAisle(vehicle, x, y, 0, currDroneCoords.yaw, toJunction);
 }
 
 typedef struct Data {
@@ -178,11 +182,17 @@ int _callback(int data_type, int data_len, char* content) {
 	if ( e_obstacle_distance == data_type && NULL != content ){
 		obstacle_distance *oa = (obstacle_distance*)content;
 		currData.o = *oa;
+		currDists.d = oa->distance[0];
+		currDists.f = oa->distance[1];
+		currDists.r = oa->distance[2];
+		currDists.b = oa->distance[3];
+		currDists.l = oa->distance[4];
 		//printf( "obstacle distance:" );
 		for ( int i = 0; i < CAMERA_PAIR_NUM; ++i ) {
 			//printf( " %u\n",  oa->distance[i] );
 			if (oa->distance[i] < 150) {
-				printf("DETECTED OBSTACLE on sensor: \n", i);
+				//printf("DETECTED OBSTACLE on sensor: %d\n", i);
+				//printf("obstacle distance: %d\n", oa->distance[i]);
 			}
 		}
 			//printf( "frame index:%d,stamp:%d\n", oa->frame_index, oa->time_stamp );
@@ -751,7 +761,7 @@ moveByPositionOffset(Vehicle *vehicle, float xOffsetDesired,
     }
   }
 
-  if (elapsedTimeInMs >= timeoutInMilSec)
+  /*if (elapsedTimeInMs >= timeoutInMilSec)
   {
     std::cout << "Task timeout!\n";
     if (!vehicle->isM100() && !vehicle->isLegacyM600())
@@ -765,7 +775,7 @@ moveByPositionOffset(Vehicle *vehicle, float xOffsetDesired,
       }
     }
     return ACK::FAIL;
-  }
+  }*/
 
   if (!vehicle->isM100() && !vehicle->isLegacyM600())
   {
@@ -985,21 +995,21 @@ monitoredLanding(Vehicle* vehicle, int timeout)
 // Aisle traversal command
 bool
 traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
-							float yawDesired, bool moveToJunction,
-							float xyThresh, float yawThresholdInDeg)
+	      float yawDesired, bool moveToJunction,
+	      float xyThresh, float yawThresholdInDeg)
 {
 	int responseTimeout              = 1;
-	int timeoutInMilSec              = 10000;
-  int controlFreqInHz              = 50; // Hz
-  int cycleTimeInMs                = 1000 / controlFreqInHz;
-  int outOfControlBoundsTimeLimit  = 10 * cycleTimeInMs; // 10 cycles
-  int withinControlBoundsTimeReqmt = 50 * cycleTimeInMs; // 50 cycles
-  int pkgIndex;
+	int timeoutInMilSec              = 30000;
+  	int controlFreqInHz              = 50; // Hz
+  	int cycleTimeInMs                = 1000 / controlFreqInHz;
+  	int outOfControlBoundsTimeLimit  = 10 * cycleTimeInMs; // 10 cycles
+  	int withinControlBoundsTimeReqmt = 50 * cycleTimeInMs; // 50 cycles
+  	int pkgIndex;
 
-	int distanceThresh 							 = 180; // Min obj distance to start turning
+	int distanceThresh  = 130; // Min obj distance to start turning
 
 	Pos tempPos; // Position struct to hold current value of currPos (global)
-	obstacle_distance tempDists; // var to hold curr value of obstacle distances
+	Dists tempDists; // var to hold curr value of obstacle distances
 	//Index to direction mappings: 0 - d, 1 - f, 2 - r, 3 - b, 4 - l
 
 	// Wait for data to come in
@@ -1022,9 +1032,9 @@ traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
 	currentBroadcastGP = vehicle->broadcast->getGlobalPosition();
 	originBroadcastGP  = currentBroadcastGP;
 	localOffsetFromGpsOffset(vehicle, localOffset,
-													 static_cast<void*>(&currentBroadcastGP),
-													 static_cast<void*>(&originBroadcastGP));
-  // TODO: Do we want to input offset into traversAisle and calculate
+			         static_cast<void*>(&currentBroadcastGP),
+				 static_cast<void*>(&originBroadcastGP));
+  	// TODO: Do we want to input offset into traversAisle and calculate
 	// offset desired from there?
 	double xOffsetRemaining = xTarget - localOffset.x;
 	double yOffsetRemaining = yTarget - localOffset.y;
@@ -1036,7 +1046,7 @@ traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
 
 	// Conversions
 	double yawDesiredRad     = DEG2RAD * yawDesired;
-  double yawThresholdInRad = DEG2RAD * yawThresholdInDeg;
+  	double yawThresholdInRad = DEG2RAD * yawThresholdInDeg;
 
 	//! Get Euler angle
 
@@ -1057,71 +1067,76 @@ traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
 	float xCmd, yCmd, zCmd;
 
 	// There is a deadband in position control
-  // the z cmd is absolute height
-  // while x and y are in relative
-  float zDeadband = 1.2; // since vehicle->isM100()
+  	// the z cmd is absolute height
+  	// while x and y are in relative
+  	float zDeadband = 1.2; // since vehicle->isM100()
 	/*! Calculate the inputs to send the position controller. We implement basic
-   *  receding setpoint position control and the setpoint is always 1 m away
-   *  from the current position - until we get within a threshold of the goal.
-   *  From that point on, we send the remaining distance as the setpoint.
-   */
+   	*  receding setpoint position control and the setpoint is always 1 m away
+   	*  from the current position - until we get within a threshold of the goal.
+   	*  From that point on, we send the remaining distance as the setpoint.
+   	*/
 	xCmd = speedFactor;
 	yCmd = 0; // No Y coordinate movements - yCmd = 0;
-  zCmd = currentBroadcastGP.height + zTarget;
+  	zCmd = currentBroadcastGP.height + zTarget;
 
 	while (elapsedTimeInMs < timeoutInMilSec)
 	{
-		vehicle->control->positionAndYawCtrlBody(xCmd, yCmd, zCmd,
-																						 yawDesiredRad / DEG2RAD);
-    usleep(cycleTimeInMs * 1000);
-		elapsedTimeInMs += cycleTimeInMs;
-		//! Get current position in required coordinates and units
-		broadcastQ         = vehicle->broadcast->getQuaternion();
-		yawInRad           = toEulerAngle((static_cast<void*>(&broadcastQ))).z;
-		currentBroadcastGP = vehicle->broadcast->getGlobalPosition();
-		localOffsetFromGpsOffset(vehicle, localOffset,
-														 static_cast<void*>(&currentBroadcastGP),
-														 static_cast<void*>(&originBroadcastGP));
-		//! See how much farther we have to go
-    xOffsetRemaining = xTarget - localOffset.x;
-    yOffsetRemaining = yTarget - localOffset.y;
-    zOffsetRemaining = zTarget - (-localOffset.z);
-		// GUIDANCE data collection
-		getCurrPos(&tempPos);
-    xOffsetRem = xTarget - tempPos.x;
-    yOffsetRem = yTarget - tempPos.y;
-    zOffsetRem = zTarget - (-tempPos.z);
+		vehicle->control->positionAndYawCtrlBody(xCmd/2, yCmd, zCmd,
+				                         yawDesiredRad / DEG2RAD);
+    	usleep(cycleTimeInMs * 1000);
+	elapsedTimeInMs += cycleTimeInMs;
+	//! Get current position in required coordinates and units
+	broadcastQ         = vehicle->broadcast->getQuaternion();
+	yawInRad           = toEulerAngle((static_cast<void*>(&broadcastQ))).z;
+	currentBroadcastGP = vehicle->broadcast->getGlobalPosition();
+	localOffsetFromGpsOffset(vehicle, localOffset,
+				 static_cast<void*>(&currentBroadcastGP),
+				 static_cast<void*>(&originBroadcastGP));
+	//! See how much farther we have to go
+	xOffsetRemaining = xTarget - localOffset.x;
+	yOffsetRemaining = yTarget - localOffset.y;
+	zOffsetRemaining = zTarget - (-localOffset.z);
+	// GUIDANCE data collection
+	getCurrPos(&tempPos);
+    	xOffsetRem = xTarget - tempPos.x;
+    	yOffsetRem = yTarget - tempPos.y;
+    	zOffsetRem = zTarget - (-tempPos.z);
 
-		getCurrDists(&tempDists);
-		// Left sensor triggered - rotate clockwise
-		if (tempDists->distance[4] < distanceThresh) {
-			//curr.yaw = curr.yaw + 2;
-			yawDesiredRad = yawDesiredRad + (2 * DEG2RAD);
-		// Right sensor triggered - rotate counter clockwise
-		} else if (tempDists->distance[2] < distanceThresh) {
-			//Curr.yaw = curr.yaw - 2;
-			yawDesiredRad = yawDesiredRad - (2 * DEG2RAD);
-		}
+	getCurrDists(&tempDists);
+	// Left sensor triggered - rotate clockwise
+	if (tempDists.l < distanceThresh && tempDists.r < distanceThresh) {
+		std::cout << "OBS detected both sides" << std::endl;
+	}
+	if (tempDists.l < distanceThresh) {
+		//curr.yaw = curr.yaw + 2;
+		yawDesiredRad = yawDesiredRad + (0.2 * DEG2RAD);
+		std::cout << "OBS LEFT - ROTATE CW" << std::endl;
+	// Right sensor triggered - rotate counter clockwise
+	} else if (tempDists.r < distanceThresh) {
+		//Curr.yaw = curr.yaw - 2;
+		yawDesiredRad = yawDesiredRad - (0.2 * DEG2RAD);
+		std::cout << "OBS RIGHT - ROTATE CCW" << std::endl;
+	}
 
-		//! See if we need to modify the setpoint
+	//! See if we need to modify the setpoint
     //if (std::abs(xOffsetRemaining) < speedFactor)
-    if (std::abs(xOffsetRemaining) < speedFactor)
+    if (std::abs(xOffsetRemaining) < speedFactor / 2)
     {
       xCmd = xOffsetRemaining;
       //xCmd = xOffsetRem;
     }
-		if (vehicle->isM100() && std::abs(xOffsetRemaining) < xyThresh &&
+    if (vehicle->isM100() && std::abs(xOffsetRemaining) < xyThresh &&
         std::abs(yOffsetRemaining) < xyThresh &&
         std::abs(yawInRad - yawDesiredRad) < yawThresholdInRad)
     {
 	    //! 1. We are within bounds; start incrementing our in-bound counter
 	    withinBoundsCounter += cycleTimeInMs;
     } else {
-			if (withinBoundsCounter != 0) {
+	    if (withinBoundsCounter != 0) {
 				//! 2. Start incrementing an out-of-bounds counter
-        outOfBounds += cycleTimeInMs;
-			}
-		}
+            	outOfBounds += cycleTimeInMs;
+            }
+    }
     //! 3. Reset withinBoundsCounter if necessary
     if (outOfBounds > outOfControlBoundsTimeLimit)
     {
@@ -1131,10 +1146,11 @@ traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
     //! 4. If within bounds, set flag and break
     if (withinBoundsCounter >= withinControlBoundsTimeReqmt)
     {
+      std::cout << "WITHIN BOUNDS" << std::endl;
       break;
     }
 	} // End of while loop
-	if (elapsedTimeInMs >= timeoutInMilSec)
+	/*if (elapsedTimeInMs >= timeoutInMilSec)
   {
     std::cout << "Task timeout!\n";
     if (!vehicle->isM100() && !vehicle->isLegacyM600())
@@ -1148,7 +1164,7 @@ traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
       }
     }
     return ACK::FAIL;
-  }
+  }*/
 	// If we want to move to a junction, we want to continue moving until
 	// we reach the junction.
 	if (moveToJunction) {
@@ -1173,16 +1189,18 @@ traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
                                static_cast<void*>(&originBroadcastGP));
 			getCurrDists(&tempDists);
 			// Left sensor triggered - rotate clockwise
-			if (tempDists->distance[4] < distanceThresh) {
+			if (tempDists.l < distanceThresh) {
 				//curr.yaw = curr.yaw + 2;
 				yawDesiredRad = yawDesiredRad + (2 * DEG2RAD);
+				std::cout << "OBS LEFT - ROTATE CW" << std::endl;
 			// Right sensor triggered - rotate counter clockwise
-			} else if (tempDists->distance[2] < distanceThresh) {
+			} else if (tempDists.r < distanceThresh) {
 				//Curr.yaw = curr.yaw - 2;
 				yawDesiredRad = yawDesiredRad - (2 * DEG2RAD);
+				std::cout << "OBS RIGHT - ROTATE CCW" << std::endl;
 			}
 			// TODO: REPLACE FOLLOWING IF STATEMENT TO CHECK FOR DISTANCE SENSOR
-			if (tempDists->distance[4] > junctionThresh)
+			if (tempDists.l > junctionThresh)
 			{
 			 	//! 1. We are within bounds; start incrementing our in-bound counter
 			  junctionCounter += cycleTimeInMs;

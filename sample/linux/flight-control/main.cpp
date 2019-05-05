@@ -46,9 +46,10 @@ extern "C" {
 }
 
 using std::vector;
+using std::cout;
 using namespace DJI::OSDK;
 using namespace DJI::OSDK::Telemetry;
-
+using std::endl;
 void read_rfid(TMR_Reader * rp, uint32_t timeout, vector<char*>& buffer) {
 	TMR_TagReadData ** tags;
 	TMR_ReadPlan plan;
@@ -179,6 +180,15 @@ main(int argc, char** argv)
   std::cout
     << "| [g] get ganster with dimitri                                   |"
     << std::endl;
+  std::cout
+    << "| [h] altitude control loop                                      |"
+    << std::endl;
+  std::cout
+    << "| [i] print z coordinates                                        |"
+    << std::endl;
+  std::cout
+    << "| [j] Traverse Aisle (South)                                     |"
+    << std::endl;
 
   char inputChar = 'g';
   std::cin >> inputChar;
@@ -272,21 +282,121 @@ main(int argc, char** argv)
       moveByPositionOffset(vehicle,0,0,2,whSouth);
 
       std::cout << "Move forward (1)" << std::endl;
-      moveSouth(vehicle, 15); 
-      /*std::cout << "Move forward (2)" << std::endl;
-      moveSouth(vehicle, 1.5); 
+      moveSouth(vehicle, 5); 
+      std::cout << "sleeping\n";
+      sleep(2000);
+      std::cout << "ending first sleep\n";
+      std::cout << "Move forward (2)" << std::endl;
+      moveSouth(vehicle, 1.5);
+      sleep(2000); 
+      cout << "sleeping 2\n";
       std::cout << "Move forward (3)" << std::endl;
       moveSouth(vehicle, 1.5); 
+      sleep(2000);
+      cout << "sleeping 3\n";
       std::cout << "Move forward (4)" << std::endl;
       moveSouth(vehicle, 1.5);
+      sleep(2000);
+      cout << "sleeping 4\n";
       std::cout << "Move forward (5)" << std::endl;
-      moveSouth(vehicle, 1.5);*/
+      moveSouth(vehicle, 1.5);
+      sleep(2000);
+      cout << "sleeping 5\n";
       std::cout << "LANDING" << std::endl;
       monitoredLanding(vehicle);
+      break;
+    case 'h':
+      {
+      std::cout << "TAKING OFF" << std::endl;
+      monitoredTakeoff(vehicle);
+      std::cout<<"take off complete"<<std::endl;
+
+      std::cout << "Rotating Southward" << std::endl;
+      turnSouth(vehicle);
+
+	std::cout << "Moving higher" << std::endl;
+      	moveByPositionOffset(vehicle, 0, 0, 1.5, whSouth);
+
+      char command = '\0';
+      while(std::cin>>command){
+	      //start off taking in the next direction
+	     std::cout << "type u or p" <<endl;
+	     std::cin >> command;
+		switch (command){
+			case('u'):
+				std::cout << "Moving higher" << std::endl;
+      				moveByPositionOffset(vehicle, 0, 0, 1.5, whSouth);
+				break;
+			case('d'):
+				std::cout<<"Moving lower"<<std::endl;
+				moveByPositionOffset(vehicle, 0, 0, -1.5, whSouth);
+				break;
+			
+			case('f'):
+				std::cout << "moving forward\n";
+				moveSouth(vehicle, 2.5);
+				break;
+		}
+
+      }
+      }
+      break;
+    case ('i'):
+      {
+      std::cout << "TAKING OFF" << std::endl;
+      monitoredTakeoff(vehicle);
+      std::cout<<"take off complete"<<std::endl;
+
+      std::cout << "Rotating Southward" << std::endl;
+      turnSouth(vehicle);
+
+	std::cout << "Moving higher" << std::endl;
+      	moveByPositionOffset(vehicle, 0, 0, 1.5, whSouth);
+
+      float command = 0;
+      float z=0;
+      float offset=0;
+      while(1){
+	      //start off taking in the next direction
+	     z=currPos.z*-1;
+	     std::cout << "current Height is: "<< z<<std::endl;
+	     std::cout <<"please input the new distance you would like to fly to"<<std::endl;
+	     std::cin >> command;
+	     command=command;
+	     //command holds new vlaue z holds old value
+	     if (command < 0) {
+	     	break;
+	     }
+	     offset=command-z;
+	     while (offset>.25){
+	     	std::cout <<"calculated offset= "<<offset<<std::endl;
+	     	std::cout<<"changing altitude"<<std::endl;
+	     	moveByPositionOffset(vehicle, 0, 0, offset, whSouth);
+		z=currPos.z*-1;
+		offset=command-z;
+	     }
+
+      }
+      }
+      break;
 
 
-    case 'r': {
-	/*TMR_Reader r;
+
+      std::cout<<"trying to print from current position struct"<<std::endl;
+      std::cout<<currPos.z<<std::endl;
+      break;
+    case 'j':
+      std::cout << "STARTING " << std::endl;
+      monitoredTakeoff(vehicle);
+      moveByPositionOffset(vehicle, 0, 0, 0.6, whSouth);
+      std::cout <<"takeoff done \n";
+      std::cout << "Traversing" <<std::endl;
+      traverseAisleSouth(vehicle, 20, false);
+      std::cout << "Landing" << std::endl;
+      monitoredLanding(vehicle);
+      break;
+    /*case 'r': {
+	TMR_Reader r;
   	TMR_Reader * rp = &r;
 
   	TMR_Status err = TMR_create(rp, "tmr:///dev/ttyACM0");
@@ -307,10 +417,8 @@ main(int argc, char** argv)
 	read_rfid(rp, 250);
 	
 	TMR_destroy(rp);
-	break;*/
-    }
-    default:
-      break;
+	break;
+    }*/
   }
   fclose(pf);
   fclose(yf);
