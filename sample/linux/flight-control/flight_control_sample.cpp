@@ -964,7 +964,7 @@ monitoredLanding(Vehicle* vehicle, int timeout)
 // Aisle traversal command
 bool
 traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
-							float yawDesired, float xyThresh, float yawThreshInDeg,
+							float yawDesired, float xyThresh, float yawThresholdInDeg,
 							bool moveToJunction)
 {
 	int responseTimeout              = 1;
@@ -1006,7 +1006,7 @@ traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
   // TODO: Do we want to input offset into traversAisle and calculate
 	// offset desired from there?
 	double xOffsetRemaining = xTarget - localOffset.x;
-	double xOffsetRemaining = yTarget - localOffset.y;
+	double yOffsetRemaining = yTarget - localOffset.y;
 	double zOffsetRemaining = zTarget - (-localOffset.z);
 
 	double xOffsetRem = xTarget - tempPos.x;
