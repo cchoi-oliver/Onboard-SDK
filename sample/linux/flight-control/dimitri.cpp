@@ -83,7 +83,6 @@ void read_rfid(TMR_Reader * rp, uint32_t timeout) {
 
 			TMR_bytesToHex(tag_data.tag.epc, tag_data.tag.epcByteCount, data);
 			fprintf(stdout, "%s\n", data);
-			fprintf(rf, "%s\n", data);
 		}
 	}
 }
@@ -93,11 +92,11 @@ void continuous_read(TMR_Reader * rp) {
 	fprintf(rf, "BUFFER BEGIN:\n");
 
 	while (1) {
-		cout << "reading\n";
-		read_rfid(rp, 4000);
+		read_rfid(rp, 3000);
 		sleep(3);
 	}
 
+	fprintf(stdout, "BUFFER END:\n");
 }
 
 /*! main
@@ -289,7 +288,7 @@ std::cout
       moveSouth(vehicle, 1);
       monitoredLanding(vehicle);
       break;
-    case 'g'://attempting multiple movement commands in a row doesn't work
+    case 'g':
       std::cout << "TAKING OFF" << std::endl;
       monitoredTakeoff(vehicle);
       std::cout<<"take off complete"<<std::endl;
@@ -325,7 +324,7 @@ std::cout
       std::cout << "LANDING" << std::endl;
       monitoredLanding(vehicle);
       break;
-    case 'h'://to test moving up and down
+    case 'h':
       {
       std::cout << "TAKING OFF" << std::endl;
       monitoredTakeoff(vehicle);
@@ -361,10 +360,8 @@ std::cout
       }
       }
       break;
-    case ('i')://more accurate up and down
+    case ('i'):
       {
-      thread* rfid_thread_pointer;
-	rfid_thread_pointer = new thread(continuous_read, rp);
       std::cout << "TAKING OFF" << std::endl;
       monitoredTakeoff(vehicle);
       std::cout<<"take off complete"<<std::endl;
@@ -390,10 +387,8 @@ std::cout
 	     	break;
 	     }
 	     offset=command-z;
-	     std::cout <<"calculated offset1= "<<offset<<std::endl;
-
-	     while (abs(offset)>.10){
-	     	std::cout <<"calculated offset2= "<<offset<<std::endl;
+	     while (offset>.25){
+	     	std::cout <<"calculated offset= "<<offset<<std::endl;
 	     	std::cout<<"changing altitude"<<std::endl;
 	     	moveByPositionOffset(vehicle, 0, 0, offset, whSouth);
 		z=currPos.z*-1;
@@ -409,14 +404,8 @@ std::cout
       std::cout<<"trying to print from current position struct"<<std::endl;
       std::cout<<currPos.z<<std::endl;
       break;
-case 'l': {//set height and then set traversal distance
-		  std::cout<<"initializing reader"<<std::endl;
-	thread* rfid_thread_pointer;
-	rfid_thread_pointer = new thread(continuous_read, rp);	  
-	sleep(0.25);
-	std::cout<<"rfid sucesfully on"<<std::endl;
-
-	std::cout << "TAKING OFF" << std::endl;
+    case 'l': {//case for control loop
+      std::cout << "TAKING OFF" << std::endl;
       monitoredTakeoff(vehicle);
       std::cout<<"take off complete"<<std::endl;
 
@@ -440,7 +429,7 @@ case 'l': {//set height and then set traversal distance
 	     	break;
 	     }
 	     offset=command-z;
-	     while (offset>.18){
+	     while (offset>.25){
 	     	std::cout <<"calculated offset= "<<offset<<std::endl;
 	     	std::cout<<"changing altitude"<<std::endl;
 	     	moveByPositionOffset(vehicle, 0, 0, offset, whSouth);
@@ -475,8 +464,7 @@ case 'l': {//set height and then set traversal distance
       monitoredLanding(vehicle);
       break;
 	      }
-
-    case 'j'://chang traversal base case
+    case 'j':
       std::cout << "STARTING " << std::endl;
       monitoredTakeoff(vehicle);
       moveByPositionOffset(vehicle, 0, 0, 0.6, whSouth);
@@ -486,7 +474,7 @@ case 'l': {//set height and then set traversal distance
       std::cout << "Landing" << std::endl;
       monitoredLanding(vehicle);
       break;
-    case 'k'://christian rfid case
+    case 'k':
 	std::cout << "Starting\n";
 	//start rfid thread
 	thread* rfid_thread_pointer;
