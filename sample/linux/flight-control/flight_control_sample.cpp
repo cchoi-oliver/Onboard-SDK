@@ -39,6 +39,7 @@ using namespace DJI::OSDK::Telemetry;
 
 FILE *pf = fopen("position_out.csv", "w");
 FILE *yf = fopen("yaw_out.csv", "w");
+FILE *rf = fopen("reader_out.csv", "w");
 
 double whNorth = 92;  // warehouse north in degrees
 double whEast = whNorth + 90; // warehouse east (degrees)

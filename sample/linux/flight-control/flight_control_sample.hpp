@@ -35,6 +35,7 @@
 
 // System Includes
 #include <cmath>
+#include <vector>
 
 // DJI OSDK includes
 #include "dji_status.hpp"
@@ -83,6 +84,7 @@ typedef struct Dists {
 	unsigned short r;
 } _Dists;
 
+extern std::vector<char*> rfid_data;
 extern volatile Pos currPos;
 extern volatile Vel currVel;
 extern volatile Dists currDists;

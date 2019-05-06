@@ -37,6 +37,7 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <time.h>
+#include <thread>
 #include <vector>
 
 extern "C" {
@@ -47,13 +48,17 @@ extern "C" {
 
 using std::vector;
 using std::cout;
+using std::thread;
 using namespace DJI::OSDK;
 using namespace DJI::OSDK::Telemetry;
 using std::endl;
-void read_rfid(TMR_Reader * rp, uint32_t timeout, vector<char*>& buffer) {
+
+/** Function for reading from RFID sensor.
+  * stores output in buffer of C Strings. */
+void read_rfid(TMR_Reader * rp, uint32_t timeout) {
 	TMR_TagReadData ** tags;
 	TMR_ReadPlan plan;
-	
+
 	int32_t c = 500 * sizeof(TMR_TagReadData);
 	int32_t *tagCount = &c;
 
@@ -63,23 +68,34 @@ void read_rfid(TMR_Reader * rp, uint32_t timeout, vector<char*>& buffer) {
 	TMR_paramSet(rp, TMR_PARAM_READ_PLAN, &plan);
 
 	TMR_Status err = TMR_read(rp, timeout, NULL);
-	
+
 	if (*tagCount <  0) {
 		fprintf(stderr, "could not read tags  %d\n", *tagCount);
 	} else {
-		
+
 		while (TMR_hasMoreTags(rp) == TMR_SUCCESS) {
 			TMR_TagReadData tag_data;
-			
+
 			TMR_getNextTag(rp, &tag_data);
 			char data[255];
 
 			TMR_bytesToHex(tag_data.tag.epc, tag_data.tag.epcByteCount, data);
-			buffer.push_back(data);
+			rfid_data.push_back(data);
 		}
 	}
 }
 
+/** Function to use as target for separate RFID thread. */
+void continuous_read(TMR_Reader * rp) {
+	fprintf(rf, "BUFFER BEGIN:\n");
+
+	while (1) {
+		read_rfid(rp, 5000);
+		sleep(3);
+	}
+
+	fprintf(rf, "BUFFER END:\n");
+}
 
 /*! main
  *
@@ -87,29 +103,24 @@ void read_rfid(TMR_Reader * rp, uint32_t timeout, vector<char*>& buffer) {
 int
 main(int argc, char** argv)
 {
-  /*TMR_Reader r;
+  TMR_Reader r;
   TMR_Reader * rp = &r;
 
   TMR_Status err = TMR_create(rp, "tmr:///dev/ttyACM0");
-	
+
   if (err != TMR_SUCCESS) {
-	fprintf(stderr, "cannot connect reader\n");
+		fprintf(stderr, "cannot connect reader\n");
   } else {
-	printf("reader created\n");
+		printf("reader created\n");
   }
-	
+
   //connect the reader
   err = TMR_connect(rp);
 
   if (err == TMR_SUCCESS) {
-	printf("reader connected\n");
+		printf("reader connected\n");
   }
 
-  vector<char*> buffer;
-  read_rfid(rp, 1000, buffer);
-  printf("reader destroyed\n");
-  TMR_destroy(rp);
-*/
   currDroneCoords.x = 0;
   currDroneCoords.y = 0;
   currDroneCoords.z = 0;
@@ -189,6 +200,9 @@ main(int argc, char** argv)
   std::cout
     << "| [j] Traverse Aisle (South)                                     |"
     << std::endl;
+	std::cout
+		<< "| [k] Traverse Aisle while scanning RFID tags									   |"
+		<< std::endl;
 
   char inputChar = 'g';
   std::cin >> inputChar;
@@ -207,11 +221,11 @@ main(int argc, char** argv)
       std::cout << "Moving higher" << std::endl;
       moveByPositionOffset(vehicle, 0, 0, 1.5, whSouth);
       std::cout << "Move forward (1)" << std::endl;
-      moveSouth(vehicle, 1.5); 
+      moveSouth(vehicle, 1.5);
       std::cout << "Move forward (2)" << std::endl;
-      moveSouth(vehicle, 1.5); 
+      moveSouth(vehicle, 1.5);
       std::cout << "Move forward (3)" << std::endl;
-      moveSouth(vehicle, 1.5); 
+      moveSouth(vehicle, 1.5);
       std::cout << "Move forward (4)" << std::endl;
       moveSouth(vehicle, 1.5);
       std::cout << "Move forward (5)" << std::endl;
@@ -282,16 +296,16 @@ main(int argc, char** argv)
       moveByPositionOffset(vehicle,0,0,2,whSouth);
 
       std::cout << "Move forward (1)" << std::endl;
-      moveSouth(vehicle, 5); 
+      moveSouth(vehicle, 5);
       std::cout << "sleeping\n";
       sleep(2000);
       std::cout << "ending first sleep\n";
       std::cout << "Move forward (2)" << std::endl;
       moveSouth(vehicle, 1.5);
-      sleep(2000); 
+      sleep(2000);
       cout << "sleeping 2\n";
       std::cout << "Move forward (3)" << std::endl;
-      moveSouth(vehicle, 1.5); 
+      moveSouth(vehicle, 1.5);
       sleep(2000);
       cout << "sleeping 3\n";
       std::cout << "Move forward (4)" << std::endl;
@@ -331,7 +345,7 @@ main(int argc, char** argv)
 				std::cout<<"Moving lower"<<std::endl;
 				moveByPositionOffset(vehicle, 0, 0, -1.5, whSouth);
 				break;
-			
+
 			case('f'):
 				std::cout << "moving forward\n";
 				moveSouth(vehicle, 2.5);
@@ -395,33 +409,24 @@ main(int argc, char** argv)
       std::cout << "Landing" << std::endl;
       monitoredLanding(vehicle);
       break;
-    /*case 'r': {
-	TMR_Reader r;
-  	TMR_Reader * rp = &r;
+		case 'k':
+			std::cout << "Starting\n";
+			//start rfid thread
+			thread* rfid_thread_pointer;
+			rfid_thread_pointer = new thread(continuous_read, rp);
 
-  	TMR_Status err = TMR_create(rp, "tmr:///dev/ttyACM0");
-	
-  	if (err != TMR_SUCCESS) {
-		fprintf(stderr, "cannot connect reader\n");
-  	} else {
-		printf("reader created\n");
- 	}
-	
-	//connect the reader
-	err = TMR_connect(rp);
-
-	if (err == TMR_SUCCESS) {
-		printf("reader connected\n");
-	}
-
-	read_rfid(rp, 250);
-	
-	TMR_destroy(rp);
-	break;
-    }*/
+			//run drone movement commands
+			monitoredTakeoff(vehicle);
+			turnSouth(vehicle);
+			moveSouth(vehicle, 5);
   }
-  fclose(pf);
+
+  std::cout << "Destroying reader\n";
+  err = TMR_destroy(rp);
+
+	fclose(pf);
   fclose(yf);
+	delete rfid_thread_pointer;
   err_code = release_transfer();
   std::cout << "ENDING PROGRAM" << std::endl;
 
