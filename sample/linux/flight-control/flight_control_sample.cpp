@@ -67,9 +67,9 @@ void getCurrPos(Pos* destPos) {
 void getCurrDists(Dists* destDists) {
 	destDists->d = currDists.d;
 	destDists->f = currDists.f;
-	destDists->l = currDists.l;
-	destDists->b = currDists.b;
 	destDists->r = currDists.r;
+	destDists->b = currDists.b;
+	destDists->l = currDists.l;
 }
 
 droneCoords currDroneCoords;
@@ -999,7 +999,7 @@ traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
 	      float xyThresh, float yawThresholdInDeg)
 {
 	int responseTimeout              = 1;
-	int timeoutInMilSec              = 30000;
+	int timeoutInMilSec              = 30000; // Long timeout
   	int controlFreqInHz              = 50; // Hz
   	int cycleTimeInMs                = 1000 / controlFreqInHz;
   	int outOfControlBoundsTimeLimit  = 10 * cycleTimeInMs; // 10 cycles
@@ -1007,6 +1007,9 @@ traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
   	int pkgIndex;
 
 	int distanceThresh  = 130; // Min obj distance to start turning
+
+  float cwYawLim = (yawDesired + 5) * DEG2RAD; // Clockwise limit of yaw
+  float ccwYawLim = (yawDesired - 5) * DEG2RAD; // Counter clockwise limit of yaw
 
 	Pos tempPos; // Position struct to hold current value of currPos (global)
 	Dists tempDists; // var to hold curr value of obstacle distances
@@ -1032,8 +1035,8 @@ traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
 	currentBroadcastGP = vehicle->broadcast->getGlobalPosition();
 	originBroadcastGP  = currentBroadcastGP;
 	localOffsetFromGpsOffset(vehicle, localOffset,
-			         static_cast<void*>(&currentBroadcastGP),
-				 static_cast<void*>(&originBroadcastGP));
+                           static_cast<void*>(&currentBroadcastGP),
+                           static_cast<void*>(&originBroadcastGP));
   	// TODO: Do we want to input offset into traversAisle and calculate
 	// offset desired from there?
 	double xOffsetRemaining = xTarget - localOffset.x;
@@ -1046,7 +1049,7 @@ traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
 
 	// Conversions
 	double yawDesiredRad     = DEG2RAD * yawDesired;
-  	double yawThresholdInRad = DEG2RAD * yawThresholdInDeg;
+  double yawThresholdInRad = DEG2RAD * yawThresholdInDeg;
 
 	//! Get Euler angle
 
@@ -1077,42 +1080,49 @@ traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
    	*/
 	xCmd = speedFactor;
 	yCmd = 0; // No Y coordinate movements - yCmd = 0;
-  	zCmd = currentBroadcastGP.height + zTarget;
+  zCmd = currentBroadcastGP.height + zTarget;
+
+  int printCtr = 0;
 
 	while (elapsedTimeInMs < timeoutInMilSec)
 	{
+    if (printCtr++ % 100 == 0) {
+      std::cout << "Offset Rems: ";
+      std::cout << xOffsetRem << ", " << yOffsetRem << ", " << zOffsetRem;
+      std::cout << std::endl;
+    }
 		vehicle->control->positionAndYawCtrlBody(xCmd/2, yCmd, zCmd,
 				                         yawDesiredRad / DEG2RAD);
-    	usleep(cycleTimeInMs * 1000);
+    usleep(cycleTimeInMs * 1000);
 	elapsedTimeInMs += cycleTimeInMs;
 	//! Get current position in required coordinates and units
 	broadcastQ         = vehicle->broadcast->getQuaternion();
 	yawInRad           = toEulerAngle((static_cast<void*>(&broadcastQ))).z;
 	currentBroadcastGP = vehicle->broadcast->getGlobalPosition();
 	localOffsetFromGpsOffset(vehicle, localOffset,
-				 static_cast<void*>(&currentBroadcastGP),
-				 static_cast<void*>(&originBroadcastGP));
+                           static_cast<void*>(&currentBroadcastGP),
+                           static_cast<void*>(&originBroadcastGP));
 	//! See how much farther we have to go
 	xOffsetRemaining = xTarget - localOffset.x;
 	yOffsetRemaining = yTarget - localOffset.y;
 	zOffsetRemaining = zTarget - (-localOffset.z);
 	// GUIDANCE data collection
 	getCurrPos(&tempPos);
-    	xOffsetRem = xTarget - tempPos.x;
-    	yOffsetRem = yTarget - tempPos.y;
-    	zOffsetRem = zTarget - (-tempPos.z);
+	xOffsetRem = xTarget - tempPos.x;
+	yOffsetRem = yTarget - tempPos.y;
+	zOffsetRem = zTarget - (-tempPos.z);
 
 	getCurrDists(&tempDists);
-	// Left sensor triggered - rotate clockwise
 	if (tempDists.l < distanceThresh && tempDists.r < distanceThresh) {
 		std::cout << "OBS detected both sides" << std::endl;
 	}
-	if (tempDists.l < distanceThresh) {
+  // Left sensor triggered - rotate clockwise
+	if (tempDists.l < distanceThresh && yawDesiredRad < cwYawLim) {
 		//curr.yaw = curr.yaw + 2;
 		yawDesiredRad = yawDesiredRad + (0.2 * DEG2RAD);
 		std::cout << "OBS LEFT - ROTATE CW" << std::endl;
 	// Right sensor triggered - rotate counter clockwise
-	} else if (tempDists.r < distanceThresh) {
+  } else if (tempDists.r < distanceThresh && yawDesiredRad > ccwYawLim) {
 		//Curr.yaw = curr.yaw - 2;
 		yawDesiredRad = yawDesiredRad - (0.2 * DEG2RAD);
 		std::cout << "OBS RIGHT - ROTATE CCW" << std::endl;
@@ -1188,17 +1198,20 @@ traverseAisle(Vehicle *vehicle, float xTarget, float yTarget, float zTarget,
                                static_cast<void*>(&currentBroadcastGP),
                                static_cast<void*>(&originBroadcastGP));
 			getCurrDists(&tempDists);
-			// Left sensor triggered - rotate clockwise
-			if (tempDists.l < distanceThresh) {
-				//curr.yaw = curr.yaw + 2;
-				yawDesiredRad = yawDesiredRad + (2 * DEG2RAD);
-				std::cout << "OBS LEFT - ROTATE CW" << std::endl;
-			// Right sensor triggered - rotate counter clockwise
-			} else if (tempDists.r < distanceThresh) {
-				//Curr.yaw = curr.yaw - 2;
-				yawDesiredRad = yawDesiredRad - (2 * DEG2RAD);
-				std::cout << "OBS RIGHT - ROTATE CCW" << std::endl;
-			}
+      if (tempDists.l < distanceThresh && tempDists.r < distanceThresh) {
+    		std::cout << "OBS detected both sides" << std::endl;
+    	}
+      // Left sensor triggered - rotate clockwise
+    	if (tempDists.l < distanceThresh && yawDesiredRad < cwYawLim) {
+    		//curr.yaw = curr.yaw + 2;
+    		yawDesiredRad = yawDesiredRad + (0.2 * DEG2RAD);
+    		std::cout << "OBS LEFT - ROTATE CW" << std::endl;
+    	// Right sensor triggered - rotate counter clockwise
+      } else if (tempDists.r < distanceThresh && yawDesiredRad > ccwYawLim) {
+    		//Curr.yaw = curr.yaw - 2;
+    		yawDesiredRad = yawDesiredRad - (0.2 * DEG2RAD);
+    		std::cout << "OBS RIGHT - ROTATE CCW" << std::endl;
+    	}
 			// TODO: REPLACE FOLLOWING IF STATEMENT TO CHECK FOR DISTANCE SENSOR
 			if (tempDists.l > junctionThresh)
 			{
