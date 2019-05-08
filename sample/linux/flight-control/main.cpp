@@ -212,7 +212,7 @@ std::cout
 
   char inputChar = 'g';
   std::cin >> inputChar;
-
+  fprintf(rf, "TEST\n");
   switch (inputChar)
   {
     case 'a':
@@ -340,7 +340,7 @@ std::cout
       char command = '\0';
       while(std::cin>>command){
 	      //start off taking in the next direction
-	     std::cout << "type u or p" <<endl;
+	     std::cout << "type u or d" <<endl;
 	     std::cin >> command;
 		switch (command){
 			case('u'):
@@ -363,8 +363,8 @@ std::cout
       break;
     case ('i')://more accurate up and down
       {
-      thread* rfid_thread_pointer;
-	rfid_thread_pointer = new thread(continuous_read, rp);
+      //thread* rfid_thread_pointer;
+	//rfid_thread_pointer = new thread(continuous_read, rp);
       std::cout << "TAKING OFF" << std::endl;
       monitoredTakeoff(vehicle);
       std::cout<<"take off complete"<<std::endl;
@@ -378,6 +378,7 @@ std::cout
       float command = 0;
       float z=0;
       float offset=0;
+      int sure=0;
       while(1){
 	      //start off taking in the next direction
 	     z=currPos.z*-1;
@@ -389,15 +390,27 @@ std::cout
 	     if (command < 0) {
 	     	break;
 	     }
+	     if (command >6){
+		while (1) {
+			std::cout<<"you fucked up"<<std::endl;
+		}
+	     }
 	     offset=command-z;
 	     std::cout <<"calculated offset1= "<<offset<<std::endl;
-
-	     while (abs(offset)>.10){
-	     	std::cout <<"calculated offset2= "<<offset<<std::endl;
-	     	std::cout<<"changing altitude"<<std::endl;
-	     	moveByPositionOffset(vehicle, 0, 0, offset, whSouth);
-		z=currPos.z*-1;
-		offset=command-z;
+	     std::cout<<"if the offset is ok type 1"<<std::endl;
+	     std::cin>>sure;
+		
+	
+	     if (sure ==1) {
+	     	while (abs(offset)>.10){
+	     		std::cout <<"calculated offset2= "<<offset<<std::endl;
+	     		std::cout<<"changing altitude"<<std::endl;
+	     		moveByPositionOffset(vehicle, 0, 0, offset, whSouth);
+			z=currPos.z*-1;
+			offset=command-z;
+	     	}
+	     }else {
+		     return 69;
 	     }
 
       }
@@ -410,12 +423,12 @@ std::cout
       std::cout<<currPos.z<<std::endl;
       break;
 case 'l': {//set height and then set traversal distance
-		  std::cout<<"initializing reader"<<std::endl;
+/*		  std::cout<<"initializing reader"<<std::endl;
 	thread* rfid_thread_pointer;
 	rfid_thread_pointer = new thread(continuous_read, rp);	  
 	sleep(0.25);
 	std::cout<<"rfid sucesfully on"<<std::endl;
-
+*/
 	std::cout << "TAKING OFF" << std::endl;
       monitoredTakeoff(vehicle);
       std::cout<<"take off complete"<<std::endl;
@@ -429,6 +442,7 @@ case 'l': {//set height and then set traversal distance
       float command = 0;
       float z=0;
       float offset=0;
+      float sure=0;
 	      //start off taking in the next direction
 	     z=currPos.z*-1;
 	     std::cout << "current Height is: "<< z<<std::endl;
@@ -437,29 +451,46 @@ case 'l': {//set height and then set traversal distance
 	     command=command;
 	     //command holds new vlaue z holds old value
 	     if (command < 0) {
-	     	break;
+	     	return 8;
+	     }
+	     if (command >6){
+		while (1) {
+			std::cout<<"you fucked up"<<std::endl;
+		}
 	     }
 	     offset=command-z;
+	     
+	     std::cout <<"calculated offset1= "<<offset<<std::endl;
+	     std::cout<<"if the offset is ok type 1"<<std::endl;
+	     std::cin>>sure;
+	     if (sure==1){
 	     while (offset>.18){
 	     	std::cout <<"calculated offset= "<<offset<<std::endl;
-	     	std::cout<<"changing altitude"<<std::endl;
+	     	std::cout<<"sending traversal command with new offset"<<std::endl;
 	     	moveByPositionOffset(vehicle, 0, 0, offset, whSouth);
 		std::cout<<"move command executed"<<std::endl;
 		z=currPos.z*-1;
 		offset=command-z;
 	     }
+	     }
+	     else {
+		return 69;
+	     }
 
 	     std::cout<<"please input the distance down the ailse you would like to traverse"<<std::endl;
 	     float t_dist=0;
 	     std::cin>>t_dist;
-	//calculate initial position
+	     std::cout<<"traversal distance: "<<t_dist<<std::endl;
+		std::cout<<"are you sure? type 1 if you is"<<std::endl;
+		std::cin>>sure;
+	     //calculate initial position
 	float xf=0;
 	float yf=0;
 	float displacement=0;
 	float xi=currPos.x;
 	float yi=currPos.y;
 	float dist_left=t_dist;
-	
+	if (sure == 1){
 	while (dist_left>0){
       		std::cout << "Traversing" <<std::endl;
       		traverseAisleSouth(vehicle,dist_left , false);
@@ -469,6 +500,9 @@ case 'l': {//set height and then set traversal distance
       		//calulate distance traveled
 		displacement=sqrt(pow((xf-xi),2)+pow((yf-yi),2));
 		dist_left=t_dist-displacement;
+	}
+	}else {
+		return 69;
 	}
       
       std::cout << "Landing" << std::endl;

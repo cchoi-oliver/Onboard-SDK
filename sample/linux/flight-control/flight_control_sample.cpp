@@ -40,7 +40,7 @@ using namespace DJI::OSDK::Telemetry;
 FILE *pf = fopen("position_out.csv", "w");
 FILE *yf = fopen("yaw_out.csv", "w");
 
-double whNorth = 89;  // warehouse north in degrees //increasing shifts clockwise
+double whNorth = 100;  // warehouse north in degrees //increasing shifts clockwise
 double whEast = whNorth + 90; // warehouse east (degrees)
 double whSouth = whNorth - 180; // warehouse south (degrees)
 double whWest = whEast - 180; // warehouse west (degrees)
@@ -177,8 +177,9 @@ int _callback(int data_type, int data_len, char* content) {
 		currData.v = v;
 
 		//fprintf(pf, "%f, %f, %f\n", p.x, p.y, p.z);
-		//std::cout << p.x << " " << p.y << " " << std::endl;
+		//std::cout << p.x << " " << p.y << " " << p.z << std::endl;
 	}
+	//std::cout << "obstacle data up next!\n";
 	if ( e_obstacle_distance == data_type && NULL != content ){
 		obstacle_distance *oa = (obstacle_distance*)content;
 		currData.o = *oa;
@@ -198,7 +199,8 @@ int _callback(int data_type, int data_len, char* content) {
 			//printf( "frame index:%d,stamp:%d\n", oa->frame_index, oa->time_stamp );
 
 		//print to file
-		//fprintf(stdout,  "%u, %u, %u, %u, %u\n", oa->distance[0], oa->distance[1], oa->distance[2], oa->distance[3], oa->distance[4]);
+	//	std::cout << "obstacle distance " << oa->distance[0] << " " << oa->distance[1] << " " << oa->distance[2] << " " << oa->distance[3] << std::endl;
+		//fprintf(stdout,  "obstacle distnace: %u, %u, %u, %u, %u\n", oa->distance[0], oa->distance[1], oa->distance[2], oa->distance[3], oa->distance[4]);
 
 	}
 
